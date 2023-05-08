@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package example.event;
+
+option java_package = "com.getlipa.eventstore.example.event";
+
+message Simple {
+  string data = 1;
+}
+
+message Other {
+  string data = 1;
+  string metadata = 2;
+}
