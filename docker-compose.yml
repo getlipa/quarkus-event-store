@@ -1,0 +1,72 @@
+x-shared-env: &shared-env
+  PGADMIN_DEFAULT_EMAIL: "admin@lipa.local"
+  POSTGRES_PASSWORD: password
+
+
+services:
+
+  db-data:
+    image: postgres:14
+    environment:
+      <<: *shared-env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - ${DB_PORT:-5432}:5432
+
+  nginx:
+    image: nginx
+    environment:
+      <<: *shared-env
+    ports:
+      - "1818:80"
+    command: |
+      bash -c 'bash -s <<EOF
+        cat > /etc/nginx/conf.d/default.conf <<EON
+          server {
+              listen 80;
+              server_name localhost;
+              location / {
+                  proxy_set_header REMOTE_USER $${PGADMIN_DEFAULT_EMAIL};
+                  proxy_pass http://pgadmin:80;
+              }
+          }
+      EON
+      nginx -g "daemon off;";
+      EOF'
+
+  pgadmin:
+    image: dpage/pgadmin4
+    user: root
+    environment:
+      <<: *shared-env
+      PGADMIN_DEFAULT_PASSWORD: "lipa"
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'False'
+      PGADMIN_CONFIG_AUTHENTICATION_SOURCES: '["webserver"]'
+      PGADMIN_CONFIG_WEBSERVER_REMOTE_USER: "'REMOTE_USER'"
+      PGADMIN_CONFIG_MAX_LOGIN_ATTEMPTS: 0
+      PGADMIN_CONFIG_PASSWORD_LENGTH_MIN: 4
+      PGADMIN_DISABLE_POSTFIX: 'True'
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    entrypoint: |
+      sh -c 'sh -s <<EOF
+        cat > /pgadmin4/servers.json <<EON
+          {
+            "Servers": {
+              "1": {
+                "Name": "docker-compose (pw=$${POSTGRES_PASSWORD})",
+                "Group": "Servers",
+                "Host": "db-data",
+                "Port": 5432,
+                "MaintenanceDB": "postgres",
+                "Username": "postgres"
+              }
+            }
+          }
+      EON
+      /entrypoint.sh
+      EOF'
+
+volumes:
+  db-data:
