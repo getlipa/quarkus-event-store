@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package common;
+
+option java_package = "com.getlipa.eventstore.common";
+
+message Payload {
+  bytes type = 1;
+  bytes data = 2;
+}

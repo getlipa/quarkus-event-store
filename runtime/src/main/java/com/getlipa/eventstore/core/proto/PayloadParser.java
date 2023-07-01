@@ -1,5 +1,6 @@
 package com.getlipa.eventstore.core.proto;
 
+import com.getlipa.eventstore.common.Common;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
@@ -20,6 +21,9 @@ public class PayloadParser {
         typeMap.put(type, parser);
         log.trace("Payload parser registered: {} / {}", type, parser.getClass().getName());
     }
+    public Message parse(Common.Payload payload) {
+        return parse(ProtoUtil.toUUID(payload.getType()), payload.toByteArray());
+    }
 
     public Message parse(UUID type, byte[] payload) {
         try {
@@ -28,5 +32,4 @@ public class PayloadParser {
             throw new IllegalStateException("Unable to parse payload type: " + type);
         }
     }
-
 }
