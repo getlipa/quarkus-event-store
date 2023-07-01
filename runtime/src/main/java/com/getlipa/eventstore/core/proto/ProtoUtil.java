@@ -1,10 +1,11 @@
 package com.getlipa.eventstore.core.proto;
 
-import java.nio.charset.StandardCharsets;
 import com.getlipa.eventstore.common.Common;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Timestamp;
+
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;

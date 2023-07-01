@@ -1,6 +1,11 @@
 package com.getlipa.event.store.deployment;
 
+import com.getlipa.eventstore.core.subscription.EventCodec;
 import com.getlipa.eventstore.core.proto.PayloadClassRecorder;
+import com.getlipa.eventstore.core.subscription.SubscriptionController;
+import com.getlipa.eventstore.core.subscription.cdi.EffectiveStream;
+import com.getlipa.eventstore.core.subscription.cdi.Stream;
+import com.getlipa.eventstore.example.event.Example;
 import com.google.protobuf.Message;
 import io.quarkus.arc.deployment.BeanContainerListenerBuildItem;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -29,6 +34,8 @@ import com.getlipa.eventstore.core.persistence.postgres.JpaEvent;
 import com.getlipa.eventstore.core.persistence.postgres.PostgresEventPersistence;
 import com.getlipa.eventstore.core.proto.PayloadParser;
 import com.getlipa.eventstore.core.subscription.EventDispatcher;
+import com.getlipa.eventstore.core.subscription.cdi.Subscription;
+import com.getlipa.eventstore.subscriptions.Subscriptions;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.AnnotationsTransformerBuildItem;
 import io.quarkus.arc.deployment.ContextRegistrationPhaseBuildItem;
@@ -37,6 +44,10 @@ import io.quarkus.arc.deployment.StereotypeRegistrarBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeansRuntimeInitBuildItem;
 import io.quarkus.arc.processor.AnnotationsTransformer;
 import io.quarkus.deployment.annotations.Consume;
+import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
+import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.deployment.PanacheEntityClassBuildItem;
+import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 
 import java.util.Set;
@@ -85,6 +96,9 @@ class EventStoreProcessor {
     ) {
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Actors.Command.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Actors.Result.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Subscriptions.Event.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Simple.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Other.class)));
     }
 
     @Consume(SyntheticBeansRuntimeInitBuildItem.class)
@@ -111,6 +125,7 @@ class EventStoreProcessor {
 
     @BuildStep
     AdditionalBeanBuildItem additionalBeans() {
+        System.out.println("!!!!!!!!! CONFIGURING NOW !!!!!!!");
         return AdditionalBeanBuildItem.builder()
                 .addBeanClass(ActorIdProducer.class)
                 .addBeanClass(GatewayProducer.class)
@@ -118,18 +133,28 @@ class EventStoreProcessor {
                 .addBeanClass(ActorInterceptor.class)
                 .addBeanClass(CommandCodec.class)
                 .addBeanClass(ResultCodec.class)
+                .addBeanClass(EventCodec.class)
                 .addBeanClass(EventStore.class)
                 .addBeanClass(EventDispatcher.class)
                 .addBeanClass(PostgresEventPersistence.class)
                 .addBeanClass(JpaEvent.class)
+                .addBeanClass(SubscriptionController.class)
                 .setUnremovable()
                 .build();
     }
 
     @BuildStep
+    void additionalEntities(CombinedIndexBuildItem index, BuildProducer<PanacheEntityClassBuildItem> entityClasses) {
+        for (ClassInfo panacheEntityBaseSubclass : index.getIndex().getAllKnownSubclasses(PanacheEntity.class)) {
+            entityClasses.produce(new PanacheEntityClassBuildItem(panacheEntityBaseSubclass));
+        }
+    }
+
+    @BuildStep
     public StereotypeRegistrarBuildItem addStereotypes() {
         return new StereotypeRegistrarBuildItem(() -> Set.of(
-                DotName.createSimple(Actor.class)
+                DotName.createSimple(Actor.class),
+                DotName.createSimple(Subscription.class)
         ));
     }
 
@@ -147,5 +172,39 @@ class EventStoreProcessor {
                                     .done();
                         }
                 ));
+    }
+
+    @BuildStep
+    AnnotationsTransformerBuildItem transformSubscriptionBeans() {
+        return new AnnotationsTransformerBuildItem(AnnotationsTransformer.appliedToClass()
+                .whenClass(c -> c.hasAnnotation(Subscription.class))
+                .transform(c -> {
+                            final var subscriptionName = c.getTarget().annotation(Subscription.class).value().asString();
+                            c.transform()
+                                    .add(Subscription.Qualifier.class)
+                                    .add(Subscription.Name.class, AnnotationValue.createStringValue("value", subscriptionName))
+                                    .done();
+                        }
+                ));
+    }
+
+    @BuildStep
+    AnnotationsTransformerBuildItem transformByTypeSubscriptionBeans() {
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByType.class, EffectiveStream.ByType.class);
+    }
+
+    @BuildStep
+    AnnotationsTransformerBuildItem transformBySeriesTypeSubscriptionBeans() {
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesType.class, EffectiveStream.BySeriesType.class);
+    }
+
+    @BuildStep
+    AnnotationsTransformerBuildItem transformBySeriesIdSubscriptionBeans() {
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesId.class, EffectiveStream.BySeriesId.class);
+    }
+
+    @BuildStep
+    AnnotationsTransformerBuildItem transformByCorrelationIdSubscriptionBeans() {
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByCorrelationId.class, EffectiveStream.ByCorrelationId.class);
     }
 }

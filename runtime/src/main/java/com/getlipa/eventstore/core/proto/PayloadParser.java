@@ -22,12 +22,16 @@ public class PayloadParser {
         log.trace("Payload parser registered: {} / {}", type, parser.getClass().getName());
     }
     public Message parse(Common.Payload payload) {
-        return parse(ProtoUtil.toUUID(payload.getType()), payload.toByteArray());
+        return parse(ProtoUtil.toUUID(payload.getType()), payload.getData().toByteArray());
     }
 
     public Message parse(UUID type, byte[] payload) {
+        final var parser = typeMap.get(type);
+        if (parser == null) {
+            throw new IllegalStateException("No parser registered for payload type: " + type);
+        }
         try {
-            return typeMap.get(type).parseFrom(payload);
+            return parser.parseFrom(payload);
         } catch (InvalidProtocolBufferException e) {
             throw new IllegalStateException("Unable to parse payload type: " + type);
         }

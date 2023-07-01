@@ -6,7 +6,6 @@ import com.getlipa.eventstore.core.stream.Stream;
 import com.getlipa.eventstore.core.stream.selector.ByStreamSelector;
 import com.getlipa.eventstore.core.stream.selector.Events;
 import com.getlipa.eventstore.core.subscription.EventDispatcher;
-import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

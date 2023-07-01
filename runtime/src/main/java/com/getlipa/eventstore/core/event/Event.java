@@ -1,7 +1,6 @@
 package com.getlipa.eventstore.core.event;
 
 import com.getlipa.eventstore.core.proto.Payload;
-import com.getlipa.eventstore.core.subscription.EventHandler;
 import com.google.protobuf.Message;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +13,7 @@ import java.util.function.Supplier;
 
 @Getter
 @ToString(onlyExplicitlyIncluded = true, callSuper = true)
-public class Event<T extends Message> extends AbstractEvent<T> implements EventMetadata {
+public class Event<T extends Message> extends AbstractEvent<T> implements AnyEvent {
 
     private final long position;
 
@@ -96,7 +95,9 @@ public class Event<T extends Message> extends AbstractEvent<T> implements EventM
                 .withId(deterministicId);
     }
 
-    public <P extends Message> Event<T> on(Class<P> type, EventHandler<P> handler) {
+    @Override
+    @SuppressWarnings("unchecked")
+    public <P extends Message> Event<T> on(Class<P> type, AnyEvent.Handler<P> handler) {
         if (type.isInstance(payload())) {
             handler.handle((Event<P>) this);
         }

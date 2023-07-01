@@ -1,5 +1,6 @@
 package com.getlipa.eventstore.core.actor.messaging;
 
+import com.getlipa.eventstore.core.subscription.EventCodec;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.runtime.BeanContainerListener;
 import io.quarkus.runtime.annotations.Recorder;
@@ -17,7 +18,8 @@ public class CodecRecorder {
                 .unregisterCodec(CommandCodec.NAME)
                 .unregisterCodec(ResultCodec.NAME)
                 .registerCodec(cdi.instance(CommandCodec.class).get())
-                .registerCodec(cdi.instance(ResultCodec.class).get());
+                .registerCodec(cdi.instance(ResultCodec.class).get())
+                .registerCodec(cdi.instance(EventCodec.class).get());
         return beanContainer -> beanContainer.beanInstance(Vertx.class);
     }
 }

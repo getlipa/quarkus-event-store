@@ -1,9 +1,9 @@
 package com.getlipa.eventstore.core.stream.options;
 
+import com.getlipa.eventstore.core.event.AnyEvent;
 import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.persistence.EventPersistence;
 import com.getlipa.eventstore.core.stream.selector.Events;
-import com.getlipa.eventstore.core.subscription.EventHandler;
 import com.google.protobuf.Message;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -47,7 +47,7 @@ public class EventReader {
         return selector.readFrom(eventPersistence, optionsBuilder.build());
     }
 
-    public void forEach(EventHandler<Message> eventHandler) {
-        toIterator().forEachRemaining(eventHandler::handle);
+    public void forEach(AnyEvent.Handler<Message> handler) {
+        toIterator().forEachRemaining(handler::handle);
     }
 }

@@ -2,14 +2,14 @@ package com.getlipa.eventstore.core.persistence;
 
 import com.getlipa.eventstore.core.event.EphemeralEvent;
 import com.getlipa.eventstore.core.event.Event;
+import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
+import com.getlipa.eventstore.core.stream.options.ReadOptions;
 import com.getlipa.eventstore.core.stream.selector.ByCausationIdSelector;
 import com.getlipa.eventstore.core.stream.selector.ByCorrelationIdSelector;
 import com.getlipa.eventstore.core.stream.selector.BySeriesTypeSelector;
-import com.getlipa.eventstore.core.stream.selector.ByTypeSelector;
-import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
-import com.getlipa.eventstore.core.stream.options.ReadOptions;
 import com.getlipa.eventstore.core.stream.selector.ByStreamSelector;
+import com.getlipa.eventstore.core.stream.selector.ByTypeSelector;
 import com.google.protobuf.Message;
 
 import java.util.Iterator;
