@@ -1,15 +1,18 @@
 package com.getlipa.eventstore.core.event;
 
 import com.getlipa.eventstore.core.proto.Payload;
+import com.getlipa.eventstore.core.proto.ProtoEncodable;
+import com.getlipa.eventstore.core.proto.ProtoUtil;
+import com.getlipa.eventstore.subscriptions.Subscriptions;
 import com.google.protobuf.Message;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 @Getter
 @ToString(onlyExplicitlyIncluded = true, callSuper = true)
@@ -23,35 +26,43 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
 
     private final UUID seriesId;
 
-    @Builder
+    @lombok.Builder(setterPrefix = "with", buildMethodName = "withPayload")
     public Event(
             UUID id,
             UUID causationId,
             UUID correlationId,
             OffsetDateTime createdAt,
-            Supplier<T> payload,
+            Payload<T> payload,
             long position,
             long seriesIndex,
             UUID seriesType,
             UUID seriesId
     ) {
-        super(id, causationId, correlationId, createdAt, Payload.create(payload));
+        super(id, causationId, correlationId, createdAt, payload);
         this.position = position;
         this.seriesIndex = seriesIndex;
         this.seriesType = seriesType;
         this.seriesId = seriesId;
     }
 
+    public static AnyEvent from(Payload<Subscriptions.Event> eventPayload) {
+        return from(eventPayload.get());
+    }
+
+    public static AnyEvent from(Subscriptions.Event event) {
+        return Event.builder().decodeFromProto(event);
+    }
+
     public static <T extends Message> EventBuilder<T> from(EventMetadata event) {
         return Event.<T>builder()
-                .id(event.getId())
-                .position(event.getPosition())
-                .seriesIndex(event.getSeriesIndex())
-                .seriesType(event.getSeriesType())
-                .seriesId(event.getSeriesId())
-                .causationId(event.getCausationId())
-                .correlationId(event.getCorrelationId())
-                .createdAt(event.getCreatedAt());
+                .withId(event.getId())
+                .withPosition(event.getPosition())
+                .withSeriesIndex(event.getSeriesIndex())
+                .withSeriesType(event.getSeriesType())
+                .withSeriesId(event.getSeriesId())
+                .withCausationId(event.getCausationId())
+                .withCorrelationId(event.getCorrelationId())
+                .withCreatedAt(event.getCreatedAt());
     }
 
     public static EphemeralEvent.EphemeralEventBuilder<Message> create() {
@@ -98,9 +109,62 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
     @Override
     @SuppressWarnings("unchecked")
     public <P extends Message> Event<T> on(Class<P> type, AnyEvent.Handler<P> handler) {
-        if (type.isInstance(payload())) {
+        if (type.isInstance(getPayload().get())) {
             handler.handle((Event<P>) this);
         }
         return this;
+    }
+
+    @Override
+    protected Subscriptions.Event encodeToProto() {
+        return Subscriptions.Event.newBuilder()
+                .setId(ProtoUtil.convert(getId()))
+                .setPosition(getPosition())
+                .setSeriesIndex(getSeriesIndex())
+                .setSeriesType(ProtoUtil.convert(getSeriesType()))
+                .setSeriesId(ProtoUtil.convert(getSeriesId()))
+                .setCreatedAt(ProtoUtil.convert(getCreatedAt()))
+                .setCausationId(ProtoUtil.convert(getCausationId()))
+                .setCorrelationId(ProtoUtil.convert(getCorrelationId()))
+                .setPayload(ProtoUtil.convert(getPayload()))
+                .build();
+    }
+
+    public static class EventBuilder<T extends Message> extends ProtoEncodable.Builder<Event<T>, Subscriptions.Event> {
+
+        @Override
+        protected Event<T> decodeFromProto(Subscriptions.Event event) {
+            return Event.builder()
+                    .withId(ProtoUtil.toUUID(event.getId()))
+                    .withPosition(event.getPosition())
+                    .withSeriesIndex(event.getSeriesIndex())
+                    .withSeriesType(ProtoUtil.toUUID(event.getSeriesType()))
+                    .withSeriesId(ProtoUtil.toUUID(event.getSeriesId()))
+                    .withCausationId(ProtoUtil.toUUID(event.getCausationId()))
+                    .withCorrelationId(ProtoUtil.toUUID(event.getCorrelationId()))
+                    .withCreatedAt(OffsetDateTime.ofInstant(Instant.ofEpochSecond(
+                            event.getCreatedAt().getSeconds(),
+                            event.getCreatedAt().getNanos()), ZoneId.of("UTC"))
+                    )
+                    .withPayload(Payload.create(event.getPayload()));
+        }
+
+        public <P extends Message> Event<P> withPayload(P payload) {
+            return withPayload(Payload.create(payload));
+        }
+
+        public <P extends Message> Event<P> withPayload(Payload<P> payload) {
+            return new Event<>(
+                    id,
+                    causationId,
+                    correlationId,
+                    createdAt,
+                    payload,
+                    position,
+                    seriesIndex,
+                    seriesType,
+                    seriesId
+            );
+        }
     }
 }

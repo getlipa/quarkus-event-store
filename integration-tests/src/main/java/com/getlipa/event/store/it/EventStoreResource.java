@@ -18,7 +18,7 @@ package com.getlipa.event.store.it;
 
 import com.getlipa.eventstore.core.EventStore;
 import com.getlipa.eventstore.core.actor.Gateway;
-import com.getlipa.eventstore.core.actor.messaging.Command;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
@@ -44,11 +44,11 @@ public class EventStoreResource {
 
 
         final var test = gateway.compute(actor -> actor.doSomething(
-                Command.withPayload(Example.Simple.newBuilder().build()))
+                Msg.withPayload(Example.Simple.newBuilder().build()))
         );
 
         final var test2 = gateway.compute(actor -> actor.doSomething(
-                Command.withPayload(Example.Simple.newBuilder().build()))
+                Msg.withPayload(Example.Simple.newBuilder().build()))
         );
 
         return "Hello event-store - " + test;

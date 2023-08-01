@@ -8,15 +8,7 @@ import "common.proto";
 import "google/protobuf/timestamp.proto";
 
 
-message Command {
-  common.Payload payload = 1;
-  bytes id = 2;
-  bytes causationId = 3;
-  bytes correlationId = 4;
-  google.protobuf.Timestamp createdAt = 5;
-}
-
-message Result {
+message Msg {
   common.Payload payload = 1;
   bytes id = 2;
   bytes causationId = 3;

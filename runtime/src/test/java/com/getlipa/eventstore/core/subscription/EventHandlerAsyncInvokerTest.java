@@ -22,7 +22,7 @@ class EventHandlerAsyncInvokerTest {
 
     @Test
     public void test() {
-        final var event = Event.<Example.Simple>builder().payload(() -> Example.Simple.newBuilder().build()).build();
+        final var event = Event.builder().withPayload(Example.Simple.newBuilder().build());
         invoker.process((Event<Message>) (Object) event); // FIXME
         Mockito.verify(handlers).onSimple(event);
         Mockito.verify(handlers, Mockito.never()).onOther(Mockito.any());

@@ -17,7 +17,7 @@ public class MessageDelivery {
 
     private final ActorId actorId;
 
-    private final Command<?> message;
+    private final AnyMsg message;
 
     private final DeliveryOptions deliveryOptions;
 
@@ -25,11 +25,11 @@ public class MessageDelivery {
 
     private int deliveryAttemptsCount = 0;
 
-    public static MessageDelivery create(final Command<?> payload, final ActorId actorId) {
+    public static MessageDelivery create(final AnyMsg payload, final ActorId actorId) {
         return new MessageDelivery(
                 actorId,
                 payload,
-                new DeliveryOptions().setCodecName(CommandCodec.NAME)
+                new DeliveryOptions().setCodecName(Msg.CODEC)
         );
     }
 

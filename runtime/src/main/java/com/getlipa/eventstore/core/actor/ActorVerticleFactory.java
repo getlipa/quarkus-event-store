@@ -3,7 +3,7 @@ package com.getlipa.eventstore.core.actor;
 import com.getlipa.eventstore.core.actor.cdi.Actor;
 import com.getlipa.eventstore.core.actor.cdi.ActorId;
 import com.getlipa.eventstore.core.actor.cdi.ActorScopeContext;
-import com.getlipa.eventstore.core.actor.messaging.CommandMessageHandler;
+import com.getlipa.eventstore.core.actor.messaging.MsgHandlerInvoker;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.core.Promise;
 import io.vertx.core.Verticle;
@@ -33,7 +33,7 @@ public class ActorVerticleFactory implements VerticleFactory {
             if (!actorInstance.isResolvable()) {
                 throw new IllegalStateException("not resolvable actor: " + actorId);
             }
-            return ActorVerticle.createFor(CommandMessageHandler.create(actorInstance.get()), scope);
+            return ActorVerticle.createFor(MsgHandlerInvoker.create(actorInstance.get()), scope);
         });
     }
 

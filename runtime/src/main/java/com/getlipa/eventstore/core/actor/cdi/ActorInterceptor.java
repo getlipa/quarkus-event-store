@@ -1,7 +1,9 @@
 package com.getlipa.eventstore.core.actor.cdi;
 
-import com.getlipa.eventstore.core.actor.messaging.Command;
+import com.getlipa.eventstore.core.actor.messaging.AnyMsg;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.getlipa.eventstore.core.actor.messaging.MessageDelivery;
+import com.getlipa.eventstore.core.actor.messaging.MsgHandlerInvoker;
 import com.google.protobuf.Message;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -12,6 +14,7 @@ import jakarta.interceptor.InvocationContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -24,24 +27,26 @@ public class ActorInterceptor {
 
     private final Vertx vertx;
 
+    private static final ThreadLocal<Boolean> isLocal = ThreadLocal.withInitial(() -> false);
+
     @AroundInvoke
-    Object invokeCommand(InvocationContext context) throws Exception {
+    Object invokeMsgHandler(InvocationContext context) throws Exception {
         final var method = context.getMethod();
-        final var commandParameter = context.getParameters().length == 1 ? context.getParameters()[0] : null;
-        if (!(commandParameter instanceof Command)) {
-            log.trace("Forwarding non-command method invocation: " + method);
+        final var msgParameter = context.getParameters().length == 1 ? context.getParameters()[0] : null;
+        if (!(msgParameter instanceof Msg)) {
+            log.trace("Forwarding non-msg handler method invocation: " + method);
             return context.proceed();
         }
-        final var command = (Command<?>) commandParameter;
-        if (command.getOrigin() != null) {
-            log.trace("Command is meant to be invoked locally: " + method);
+        final var msg = (AnyMsg) msgParameter;
+        if (isLocal.get()) {
+            log.trace("Msg handler is meant to be invoked locally: " + method);
             return context.proceed();
         }
-        return invokeThroughEventBus(command, context);
+        return invokeThroughEventBus(msg, context);
     }
 
-    private Object invokeThroughEventBus(Command<?> command, InvocationContext context) throws ExecutionException, InterruptedException {
-        final var future = MessageDelivery.create(command, ActorScopeContext.current().getActorId()).deliver(vertx);
+    private Object invokeThroughEventBus(AnyMsg msg, InvocationContext context) throws ExecutionException, InterruptedException {
+        final var future = MessageDelivery.create(msg, ActorScopeContext.current().getActorId()).deliver(vertx);
         if (context.getMethod().getReturnType().isInstance(Future.class)) {
             return future;
         }
@@ -49,6 +54,15 @@ public class ActorInterceptor {
         future.onSuccess(ret::complete)
                 .onFailure(ret::completeExceptionally);
         return ret.get();
+    }
+
+    public static Object invokeLocally(MsgHandlerInvoker msgHandlerInvoker, AnyMsg msg) throws InvocationTargetException, IllegalAccessException {
+        isLocal.set(true);
+        try {
+            return msgHandlerInvoker.invoke(msg);
+        } finally {
+            isLocal.set(false);
+        }
     }
 
 }

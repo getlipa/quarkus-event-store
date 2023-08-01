@@ -3,7 +3,8 @@ package com.getlipa.eventstore.core.persistence.postgres;
 import com.getlipa.eventstore.core.event.EphemeralEvent;
 import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.event.EventMetadata;
-import com.getlipa.eventstore.core.proto.PayloadParser;
+import com.getlipa.eventstore.core.proto.Payload;
+import com.getlipa.eventstore.core.proto.ProtoUtil;
 import com.google.protobuf.Message;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.panache.common.Parameters;
@@ -63,7 +64,8 @@ public class JpaEvent extends PanacheEntityBase implements EventMetadata {
                 .createdAt(event.getCreatedAt())
                 .correlationId(event.getCorrelationId())
                 .causationId(event.getCausationId())
-                .payload(event.payload().toByteArray());
+                .type(ProtoUtil.toUUID(event.getPayload().getTypeId()))
+                .payload(event.getPayload().get().toByteArray());
     }
 
     public static JpaEvent findLatest(UUID seriesType, UUID seriesId) {
@@ -75,9 +77,8 @@ public class JpaEvent extends PanacheEntityBase implements EventMetadata {
         ).firstResult();
     }
 
-    public Event<Message> toPersistedEvent(PayloadParser parser) {
+    public Event<Message> toPersistedEvent() {
         return Event.from(this)
-                .payload(() -> parser.parse(type, payload))
-                .build();
+                .withPayload(Payload.create(type, payload));
     }
 }

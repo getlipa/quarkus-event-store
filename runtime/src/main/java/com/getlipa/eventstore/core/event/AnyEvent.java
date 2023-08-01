@@ -1,10 +1,11 @@
 package com.getlipa.eventstore.core.event;
 
 import com.google.protobuf.Message;
+import com.getlipa.eventstore.core.proto.AnyPayload;
 
 public interface AnyEvent extends EventMetadata {
 
-    Message payload();
+    AnyPayload getPayload();
 
     <T extends Message> AnyEvent on(Class<T> type, Handler<T> handler);
 

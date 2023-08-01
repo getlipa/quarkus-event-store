@@ -1,8 +1,8 @@
 package com.getlipa.eventstore.core.actor.state;
 
 import com.getlipa.eventstore.core.actor.ActorVerticle;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.getlipa.eventstore.core.actor.messaging.MessageDelivery;
-import com.getlipa.eventstore.core.actor.messaging.Result;
 import com.getlipa.eventstore.core.proto.Payload;
 import com.google.protobuf.Message;
 import io.vertx.core.Future;
@@ -22,9 +22,9 @@ public class ActorReady extends ActorState {
     public <R extends Message> Future<R> process(MessageDelivery message) {
         final  var address = ActorVerticle.address(message.getActorId(), instanceId);
         log.trace("Dispatching {} to actor '{}'", message.getMessage(), address);
-        return vertx.eventBus().<Result<R>>request(address, message.getMessage(), message.getDeliveryOptions())
+        return vertx.eventBus().<Msg<R>>request(address, message.getMessage(), message.getDeliveryOptions())
                 .map(io.vertx.core.eventbus.Message::body)
-                .map(Result::getPayload)
+                .map(Msg::getPayload)
                 .map(Payload::get)
                 .onSuccess(reply -> {
                     log.trace("Actor replied: {}", reply);

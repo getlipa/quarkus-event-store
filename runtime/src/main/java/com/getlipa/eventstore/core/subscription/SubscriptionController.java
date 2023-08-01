@@ -3,8 +3,8 @@ package com.getlipa.eventstore.core.subscription;
 import com.getlipa.eventstore.core.CdiUtil;
 import com.getlipa.eventstore.core.actor.cdi.Actor;
 import com.getlipa.eventstore.core.actor.cdi.ActorId;
-import com.getlipa.eventstore.core.actor.messaging.Command;
-import com.getlipa.eventstore.core.proto.PayloadParser;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
+import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.subscription.cdi.Subscription;
 import com.getlipa.eventstore.subscriptions.Subscriptions;
 import jakarta.enterprise.inject.Any;
@@ -13,22 +13,18 @@ import jakarta.enterprise.inject.Instance;
 @Actor("subscription-controller")
 public class SubscriptionController {
 
-    private final PayloadParser parser;
-
     private final EventProcessor eventProcessor;
 
     public SubscriptionController(
             @Any Instance<EventProcessor> eventProcessors,
             @Subscription.Qualifier Instance<Object> subscriptions,
-            ActorId actorId,
-            PayloadParser parser
+            ActorId actorId
     ) {
-        this.parser = parser;
         this.eventProcessor = determineEventProcessor(subscriptions, actorId, eventProcessors);
     }
 
-    public void handleEvent(Command<Subscriptions.Event> eventCommand) {
-        final var event = EventCodec.wrappedFrom(eventCommand.getPayload().get(), parser);
+    public void handleEvent(Msg<Subscriptions.Event> eventMsg) {
+        final var event = Event.from(eventMsg.getPayload());
         eventProcessor.process(event);
     }
 

@@ -5,7 +5,6 @@ import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.core.persistence.exception.InvalidIndexException;
-import com.getlipa.eventstore.core.proto.PayloadParser;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
 import com.getlipa.eventstore.core.stream.options.ReadOptions;
 import com.getlipa.eventstore.core.stream.selector.ByCausationIdSelector;
@@ -16,16 +15,12 @@ import com.getlipa.eventstore.core.stream.selector.ByTypeSelector;
 import com.google.protobuf.Message;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.RollbackException;
-import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 
 import java.util.Iterator;
 
 @ApplicationScoped
-@RequiredArgsConstructor
 public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
-
-    private final PayloadParser parser;
 
     @Override
     protected void handleRollback(RollbackException rollbackException) throws EventAppendException {
@@ -58,8 +53,7 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
                 .build();
         jpaEvent.persist();
         return Event.<T>from(jpaEvent)
-                .payload(event::payload)
-                .build();
+                .withPayload(event.getPayload());
     }
 
     @Override
@@ -68,7 +62,7 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
         return JpaEvent.<JpaEvent>find(query.getQuery(), query.getSort(), query.getParameters())
                 .range(0, readOptions.limit())
                 .stream()
-                .map(jpaEvent -> jpaEvent.toPersistedEvent(parser))
+                .map(JpaEvent::toPersistedEvent)
                 .iterator();
     }
 

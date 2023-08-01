@@ -3,7 +3,7 @@ package com.getlipa.eventstore.core.actor.state;
 import com.getlipa.eventstore.core.actor.cdi.ActorId;
 import com.getlipa.eventstore.core.actor.cdi.ActorScope;
 import com.getlipa.eventstore.core.actor.messaging.MessageDelivery;
-import com.getlipa.eventstore.core.actor.messaging.Command;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.google.protobuf.Message;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -43,7 +43,7 @@ class ActorReadyTest {
     @Mock
     private Message payload;
 
-    private Command<Message> command;
+    private Msg<Message> msg;
 
     private ActorReady actorReady;
 
@@ -51,10 +51,10 @@ class ActorReadyTest {
     public void setup() {
         Mockito.doReturn(eventBus).when(vertx).eventBus();
         actorReady = new ActorReady(vertx, INSTANCE_ID);
-        command = Command.withPayload(payload);
+        msg = Msg.withPayload(payload);
 
         Mockito.doReturn(ACTOR_ID).when(messageDelivery).getActorId();
-        Mockito.doReturn(command).when(messageDelivery).getMessage();
+        Mockito.doReturn(msg).when(messageDelivery).getMessage();
         Mockito.doReturn(deliveryOptions).when(messageDelivery).getDeliveryOptions();
     }
 
@@ -68,7 +68,7 @@ class ActorReadyTest {
 
         Mockito.verify(eventBus).request(
                 Mockito.eq("actor-type:actor-name:0"),
-                Mockito.same(command),
+                Mockito.same(msg),
                 Mockito.same(deliveryOptions)
         );
         Mockito.verify(messageDelivery, Mockito.never()).deliver(vertx);

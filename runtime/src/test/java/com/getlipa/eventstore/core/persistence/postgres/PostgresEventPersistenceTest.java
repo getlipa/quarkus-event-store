@@ -28,7 +28,7 @@ class PostgresEventPersistenceTest {
 
     @BeforeEach
     public void setup() {
-        persistence = new PostgresEventPersistence(null);
+        persistence = new PostgresEventPersistence();
         persistence.transactionManager = transactionManager;
     }
 

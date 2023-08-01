@@ -2,7 +2,7 @@ package com.getlipa.eventstore.core.subscription;
 
 import com.getlipa.eventstore.core.CdiUtil;
 import com.getlipa.eventstore.core.actor.Gateway;
-import com.getlipa.eventstore.core.actor.messaging.Command;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.subscription.cdi.EffectiveStream;
 import com.getlipa.eventstore.core.subscription.cdi.Stream;
@@ -23,7 +23,10 @@ public class EventDispatcher {
 
     private final Gateway<SubscriptionController> subscriberGateway;
 
-    public EventDispatcher(@Subscription.Qualifier Instance<Object> beans, Gateway<SubscriptionController> subscriberGateway) {
+    public EventDispatcher(
+            @Subscription.Qualifier Instance<Object> beans,
+            Gateway<SubscriptionController> subscriberGateway
+    ) {
         this.beans = beans;
         this.subscriberGateway = subscriberGateway;
     }
@@ -41,7 +44,9 @@ public class EventDispatcher {
                     .map(Subscription.Name::value)
                     .orElseThrow(() -> new IllegalStateException("Subscription does not specify @Subscription.Name: " + instanceHandle));
             log.trace("Dispatching {} to subscribers: {}", event, actorId);
-            subscriberGateway.run(actorId, subscriptionController -> subscriptionController.handleEvent(Command.withPayload(EventCodec.protoFrom(event))));
+            subscriberGateway.run(actorId, subscriptionController -> subscriptionController.handleEvent(
+                    Msg.withPayload(event))
+            );
         });
     }
 }

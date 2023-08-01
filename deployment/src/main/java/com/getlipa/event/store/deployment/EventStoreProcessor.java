@@ -1,6 +1,5 @@
 package com.getlipa.event.store.deployment;
 
-import com.getlipa.eventstore.core.subscription.EventCodec;
 import com.getlipa.eventstore.core.proto.PayloadClassRecorder;
 import com.getlipa.eventstore.core.subscription.SubscriptionController;
 import com.getlipa.eventstore.core.subscription.cdi.EffectiveStream;
@@ -21,9 +20,6 @@ import static io.quarkus.deployment.annotations.ExecutionTime.STATIC_INIT;
 
 import com.getlipa.eventstore.actors.Actors;
 import com.getlipa.eventstore.core.actor.messaging.CodecRecorder;
-import com.getlipa.eventstore.core.actor.messaging.CommandCodec;
-import com.getlipa.eventstore.core.EventStore;
-import com.getlipa.eventstore.core.actor.messaging.ResultCodec;
 import com.getlipa.eventstore.core.actor.cdi.Actor;
 import com.getlipa.eventstore.core.actor.GatewayProducer;
 import com.getlipa.eventstore.core.actor.cdi.ActorInterceptor;
@@ -94,8 +90,7 @@ class EventStoreProcessor {
             BuildProducer<BeanContainerListenerBuildItem> containerListenerProducer,
             PayloadClassRecorder recorder
     ) {
-        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Actors.Command.class)));
-        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Actors.Result.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Actors.Msg.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Subscriptions.Event.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Simple.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Other.class)));
@@ -131,10 +126,6 @@ class EventStoreProcessor {
                 .addBeanClass(GatewayProducer.class)
                 .addBeanClass(PayloadParser.class)
                 .addBeanClass(ActorInterceptor.class)
-                .addBeanClass(CommandCodec.class)
-                .addBeanClass(ResultCodec.class)
-                .addBeanClass(EventCodec.class)
-                .addBeanClass(EventStore.class)
                 .addBeanClass(EventDispatcher.class)
                 .addBeanClass(PostgresEventPersistence.class)
                 .addBeanClass(JpaEvent.class)

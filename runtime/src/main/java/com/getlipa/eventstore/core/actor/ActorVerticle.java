@@ -1,11 +1,11 @@
 package com.getlipa.eventstore.core.actor;
 
 import com.getlipa.eventstore.core.actor.cdi.ActorId;
+import com.getlipa.eventstore.core.actor.cdi.ActorInterceptor;
 import com.getlipa.eventstore.core.actor.cdi.ActorScope;
-import com.getlipa.eventstore.core.actor.messaging.Command;
-import com.getlipa.eventstore.core.actor.messaging.MessageHandler;
-import com.getlipa.eventstore.core.actor.messaging.Result;
-import com.getlipa.eventstore.core.actor.messaging.ResultCodec;
+import com.getlipa.eventstore.core.actor.messaging.AnyMsg;
+import com.getlipa.eventstore.core.actor.messaging.Msg;
+import com.getlipa.eventstore.core.actor.messaging.MsgHandlerInvoker;
 import com.getlipa.eventstore.core.actor.state.NoActor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -27,7 +27,7 @@ public class ActorVerticle extends AbstractVerticle {
 
     private final ActorScope actorScope;
 
-    private final MessageHandler messageHandler;
+    private final MsgHandlerInvoker msgHandlerInvoker;
 
     private final int undeployInactivityThresholdMs = 60_000;
 
@@ -35,11 +35,11 @@ public class ActorVerticle extends AbstractVerticle {
 
     private MessageConsumer<?> consumer;
 
-    public static ActorVerticle createFor(MessageHandler messageHandler, ActorScope actorScope) {
+    public static ActorVerticle createFor(MsgHandlerInvoker msgHandlerInvoker, ActorScope actorScope) {
         return new ActorVerticle(
                 Clock.systemUTC(),
                 actorScope,
-                messageHandler
+                msgHandlerInvoker
         );
     }
 
@@ -49,7 +49,7 @@ public class ActorVerticle extends AbstractVerticle {
 
     @Override
     public void start(Promise<Void> startPromise) {
-        consumer = vertx.eventBus().<Command<?>>consumer(address(actorScope.getActorId(), instanceId()))
+        consumer = vertx.eventBus().<AnyMsg>consumer(address(actorScope.getActorId(), instanceId()))
                 .handler(this::handle);
         vertx.setTimer(undeployInactivityThresholdMs, timer -> undeployAfterInactivity());
         startPromise.complete();
@@ -68,25 +68,24 @@ public class ActorVerticle extends AbstractVerticle {
                 });
     }
 
-    private void handle(Message<Command<?>> message) {
+    private void handle(Message<AnyMsg> message) {
         timeOfLastMessage = clock.instant();
         final var msg = message.body();
         final var result = actorScope.compute(() -> {
             log.trace("Handling actor message: {}", msg);
             try {
-                return messageHandler.handle(msg);
-                //} catch (InvocationTargetException | IllegalAccessException e) {
+                return ActorInterceptor.invokeLocally(msgHandlerInvoker, msg);
             } catch (Exception e) {
-                throw new IllegalStateException("Cannot invoke command handler.", e);
+                throw new IllegalStateException("Cannot invoke msg handler.", e);
             }
         });
         if (result != null && !(result instanceof com.google.protobuf.Message)) {
             // FIXME
-            message.fail(0, "Unsupported command handler return value: " + result);
+            message.fail(0, "Unsupported msg handler return value: " + result);
         }
         final var deliveryOptions = new DeliveryOptions()
-                .setCodecName(ResultCodec.NAME);
-        message.reply(Result.create().withPayload((com.google.protobuf.Message) result), deliveryOptions); // TODO
+                .setCodecName(Msg.CODEC);
+        message.reply(Msg.withPayload((com.google.protobuf.Message) result), deliveryOptions); // TODO
     }
 
     private void undeployAfterInactivity() {

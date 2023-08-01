@@ -2,6 +2,7 @@ package com.getlipa.eventstore.core.event;
 
 
 import com.getlipa.eventstore.core.proto.Payload;
+import com.getlipa.eventstore.subscriptions.Subscriptions;
 import com.google.protobuf.Message;
 import lombok.Builder;
 
@@ -10,7 +11,7 @@ import java.util.UUID;
 
 public class EphemeralEvent<T extends Message> extends AbstractEvent<T> {
 
-    @Builder(setterPrefix = "with", builderMethodName = "create", buildMethodName = "withPayload")
+    @lombok.Builder(setterPrefix = "with", builderMethodName = "create", buildMethodName = "withPayload")
     public EphemeralEvent(
             UUID id,
             UUID causationId,
@@ -19,6 +20,11 @@ public class EphemeralEvent<T extends Message> extends AbstractEvent<T> {
             T payload
     ) {
         super(id, causationId, correlationId, createdAt, Payload.create(payload));
+    }
+
+    @Override
+    protected Subscriptions.Event encodeToProto() {
+        return null; // FIXME
     }
 
     public static class EphemeralEventBuilder<T extends Message> {

@@ -65,7 +65,7 @@ public class EventHandlerInvoker implements EventProcessor {
 
     @Override
     public Future<Void> process(AnyEvent event) {
-        final var handler = handlerByPayload.get(event.payload().getClass());
+        final var handler = handlerByPayload.get(event.getPayload().get().getClass());
         if (handler == null) {
             return Future.succeededFuture();
         }
