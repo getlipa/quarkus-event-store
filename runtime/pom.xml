@@ -70,7 +70,7 @@
               <goal>extension-descriptor</goal>
             </goals>
             <configuration>
-              <deployment>${project.groupId}:${project.artifactId}-deployment:${project.version}</deployment>
+              <deployment>com.github.getlipa.quarkus-event-store:event-store-deployment:1.0.0-SNAPSHOT</deployment>
             </configuration>
           </execution>
         </executions>
