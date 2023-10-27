@@ -3,7 +3,7 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.getlipa</groupId>
+    <groupId>com.github.getlipa.quarkus-event-store</groupId>
     <artifactId>event-store-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
   </parent>
@@ -52,7 +52,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.getlipa</groupId>
+      <groupId>com.github.getlipa.quarkus-event-store</groupId>
       <artifactId>event-store-proto</artifactId>
       <version>${project.version}</version>
     </dependency>
