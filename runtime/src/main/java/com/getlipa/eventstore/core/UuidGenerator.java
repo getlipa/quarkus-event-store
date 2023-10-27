@@ -11,19 +11,22 @@ public class UuidGenerator {
 
     private final NameBasedGenerator defaultGenerator = Generators.nameBasedGenerator();
 
-    private final Map<String, NameBasedGenerator> generators = new HashMap<>();
+    final Map<String, NameBasedGenerator> generators = new HashMap<>();
 
     public UUID generate(final String namespace, final String name){
+
+        if (generators.containsKey(namespace)) {
+            return generators.get(namespace).generate(name);
+        }
 
         if (!namespace.startsWith("$")) {
             return Generators.nameBasedGenerator(defaultGenerator.generate(namespace)).generate(name);
         }
 
-        if (!generators.containsKey(namespace)) {
-            generators.put(namespace, Generators.nameBasedGenerator(defaultGenerator.generate(namespace)));
-        }
+        NameBasedGenerator generator = Generators.nameBasedGenerator(defaultGenerator.generate(namespace));
+        generators.put(namespace, generator);
 
-        return generators.get(namespace).generate(name);
+        return generator.generate(name);
 
     }
 

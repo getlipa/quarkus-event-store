@@ -19,7 +19,13 @@ import java.util.UUID;
 @ToString(onlyExplicitlyIncluded = true, callSuper = true)
 public class Event<T extends Message> extends AbstractEvent<T> implements AnyEvent {
 
-    private static final String EVENT_ID_NAMESPACE = "$event-id";
+
+    public static final String EVENT_ID_NAMESPACE = "$event-id";
+    public static final String EVENT_TYPE_NAMESPACE = "$event-type";
+    public static final String EVENT_SERIES_TYPE_NAMESPACE = "$event-series-type";
+    public static final String EVENT_SERIES_ID_NAMESPACE = "$event-series-id";
+    public static final String EVENT_CORRELATION_ID_NAMESPACE = "$event-correlation-id";
+
 
     private final long position;
 
@@ -103,7 +109,7 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
     }
 
     public EphemeralEvent.EphemeralEventBuilder<Message> causeOther(String reason) {
-        final var deterministicId = uuidGenerator.generate(EVENT_ID_NAMESPACE, String.format("%s-%s", getId(), reason));
+        final var deterministicId = uuidGenerator.generate(Event.EVENT_ID_NAMESPACE, String.format("%s-%s", getId(), reason));
         return Event.withCausationId(getId())
                 .withId(deterministicId);
     }
