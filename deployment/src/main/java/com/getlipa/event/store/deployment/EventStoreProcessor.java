@@ -55,6 +55,10 @@ class EventStoreProcessor {
     private static final Logger log = LoggerFactory.getLogger(EventStoreProcessor.class);
 
     private static final String FEATURE = "event-store";
+    private static final String EVENT_TYPE_NAMESPACE = "$event-type";
+    private static final String EVENT_SERIES_TYPE_NAMESPACE = "$event-series-type";
+    private static final String EVENT_SERIES_ID_NAMESPACE = "$event-series-id";
+    private static final String EVENT_CORRELATION_ID_NAMESPACE = "$event-correlation-id";
 
     @BuildStep
     FeatureBuildItem feature() {
@@ -181,21 +185,21 @@ class EventStoreProcessor {
 
     @BuildStep
     AnnotationsTransformerBuildItem transformByTypeSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.ByType.class, EffectiveStream.ByType.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByType.class, EffectiveStream.ByType.class, EVENT_TYPE_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformBySeriesTypeSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesType.class, EffectiveStream.BySeriesType.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesType.class, EffectiveStream.BySeriesType.class, EVENT_SERIES_TYPE_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformBySeriesIdSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesId.class, EffectiveStream.BySeriesId.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesId.class, EffectiveStream.BySeriesId.class, EVENT_SERIES_ID_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformByCorrelationIdSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.ByCorrelationId.class, EffectiveStream.ByCorrelationId.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByCorrelationId.class, EffectiveStream.ByCorrelationId.class, EVENT_CORRELATION_ID_NAMESPACE);
     }
 }

@@ -22,6 +22,8 @@ import java.util.Iterator;
 @ApplicationScoped
 public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
 
+
+    private static final String EVENT_TYPE_NAMESPACE = "$event-type";
     @Override
     protected void handleRollback(RollbackException rollbackException) throws EventAppendException {
         if (! (rollbackException.getCause() instanceof ConstraintViolationException)) {
@@ -48,7 +50,7 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     ) {
         final var jpaEvent = JpaEvent.builder(event)
                 .seriesIndex(seriesIndex.getValue())
-                .seriesType(ProtoUtil.toUUID(selector.getSeriesType()))
+                .seriesType(ProtoUtil.toUUID(EVENT_TYPE_NAMESPACE, selector.getSeriesType()))
                 .seriesId(selector.getSeriesId())
                 .build();
         jpaEvent.persist();

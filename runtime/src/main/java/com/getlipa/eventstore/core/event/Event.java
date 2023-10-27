@@ -1,5 +1,6 @@
 package com.getlipa.eventstore.core.event;
 
+import com.getlipa.eventstore.core.UuidGenerator;
 import com.getlipa.eventstore.core.proto.Payload;
 import com.getlipa.eventstore.core.proto.ProtoEncodable;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
@@ -18,6 +19,8 @@ import java.util.UUID;
 @ToString(onlyExplicitlyIncluded = true, callSuper = true)
 public class Event<T extends Message> extends AbstractEvent<T> implements AnyEvent {
 
+    private static final String EVENT_ID_NAMESPACE = "$event-id";
+
     private final long position;
 
     private final long seriesIndex;
@@ -25,6 +28,7 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
     private final UUID seriesType;
 
     private final UUID seriesId;
+    private final UuidGenerator uuidGenerator;
 
     @lombok.Builder(setterPrefix = "with", buildMethodName = "withPayload")
     public Event(
@@ -43,6 +47,7 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
         this.seriesIndex = seriesIndex;
         this.seriesType = seriesType;
         this.seriesId = seriesId;
+        uuidGenerator = new UuidGenerator();
     }
 
     public static AnyEvent from(Payload<Subscriptions.Event> eventPayload) {
@@ -98,10 +103,7 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
     }
 
     public EphemeralEvent.EphemeralEventBuilder<Message> causeOther(String reason) {
-        final var deterministicId = UUID.nameUUIDFromBytes(
-                String.format("%s-%s", getId(), reason)
-                        .getBytes(StandardCharsets.UTF_8)
-        );
+        final var deterministicId = uuidGenerator.generate(EVENT_ID_NAMESPACE, String.format("%s-%s", getId(), reason));
         return Event.withCausationId(getId())
                 .withId(deterministicId);
     }

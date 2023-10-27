@@ -21,6 +21,8 @@ public class EventQuery {
 
     private static final Sort SORT_DESC = Sort.descending("position");
 
+    private static final String EVENT_SERIES_TYPE_NAMESPACE = "$event-series-type";
+
     private final String query;
 
     private final Sort sort;
@@ -43,7 +45,7 @@ public class EventQuery {
         static EventQuery create(ByStreamSelector selector, ReadOptions readOptions) {
             final var factory = new Builder(Sorting.valueOf(readOptions.direction()));
             factory.query.append("seriesType = :seriesType AND seriesId = :seriesId");
-            factory.parameters = Parameters.with("seriesType", ProtoUtil.toUUID(selector.getSeriesType()))
+            factory.parameters = Parameters.with("seriesType", ProtoUtil.toUUID(EVENT_SERIES_TYPE_NAMESPACE, selector.getSeriesType()))
                     .and("seriesId", selector.getSeriesId());
             return create(factory, readOptions);
         }

@@ -60,6 +60,6 @@ public class Payload<T extends Message> implements AnyPayload {
     }
 
     public UUID getTypeId() {
-        return ProtoUtil.toUUID(get().getDescriptorForType().getFullName());
+        return ProtoUtil.toUUID(get().getDescriptorForType());
     }
 }

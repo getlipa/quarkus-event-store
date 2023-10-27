@@ -11,6 +11,8 @@ import java.util.UUID;
 
 public class Events {
 
+    private static final String EVENT_SERIES_ID_NAMESPACE = "$event-series-id";
+
     public static BySeriesTypeSelector bySeriesType(String seriesType) {
         return new BySeriesTypeSelector(seriesType);
     }
@@ -20,7 +22,7 @@ public class Events {
     }
 
     public static ByStreamSelector bySeries(String seriesType, String seriesId) {
-        return bySeries(seriesType, ProtoUtil.toUUID(seriesId));
+        return bySeries(seriesType, ProtoUtil.toUUID(EVENT_SERIES_ID_NAMESPACE, seriesId));
     }
 
     public static ByStreamSelector bySeries(String seriesType, UUID seriesId) {
