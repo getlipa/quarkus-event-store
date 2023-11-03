@@ -34,7 +34,7 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
     private final UUID seriesType;
 
     private final UUID seriesId;
-    private final UuidGenerator uuidGenerator;
+    private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
 
     @lombok.Builder(setterPrefix = "with", buildMethodName = "withPayload")
     public Event(
@@ -53,7 +53,6 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
         this.seriesIndex = seriesIndex;
         this.seriesType = seriesType;
         this.seriesId = seriesId;
-        uuidGenerator = new UuidGenerator();
     }
 
     public static AnyEvent from(Payload<Subscriptions.Event> eventPayload) {

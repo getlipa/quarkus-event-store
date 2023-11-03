@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public class UuidGenerator {
 
+    public static final UuidGenerator INSTANCE = new UuidGenerator();
     private final NameBasedGenerator defaultGenerator = Generators.nameBasedGenerator();
 
     final Map<String, NameBasedGenerator> generators = new HashMap<>();

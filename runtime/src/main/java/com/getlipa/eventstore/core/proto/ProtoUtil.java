@@ -14,7 +14,7 @@ import java.util.UUID;
 
 public class ProtoUtil {
 
-    private static final UuidGenerator uuidGenerator = new UuidGenerator();
+    private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
 
     public static Common.Payload convert(Payload<?> payload) {
         return Common.Payload.newBuilder()

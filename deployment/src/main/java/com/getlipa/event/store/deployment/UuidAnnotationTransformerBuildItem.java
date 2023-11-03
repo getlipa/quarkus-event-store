@@ -9,7 +9,7 @@ import java.lang.annotation.Annotation;
 
 public class UuidAnnotationTransformerBuildItem {
 
-    private static final UuidGenerator uuidGenerator = new UuidGenerator();
+    private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
 
     public static AnnotationsTransformerBuildItem create(
             final Class<? extends Annotation> stringAnnotation,
