@@ -1,5 +1,6 @@
 package com.getlipa.eventstore.core.persistence.postgres;
 
+import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.persistence.postgres.query.Sorting;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
 import com.getlipa.eventstore.core.stream.options.Cursor;
@@ -43,7 +44,7 @@ public class EventQuery {
         static EventQuery create(ByStreamSelector selector, ReadOptions readOptions) {
             final var factory = new Builder(Sorting.valueOf(readOptions.direction()));
             factory.query.append("seriesType = :seriesType AND seriesId = :seriesId");
-            factory.parameters = Parameters.with("seriesType", ProtoUtil.toUUID(selector.getSeriesType()))
+            factory.parameters = Parameters.with("seriesType", ProtoUtil.toUUID(Event.EVENT_SERIES_TYPE_NAMESPACE, selector.getSeriesType()))
                     .and("seriesId", selector.getSeriesId());
             return create(factory, readOptions);
         }

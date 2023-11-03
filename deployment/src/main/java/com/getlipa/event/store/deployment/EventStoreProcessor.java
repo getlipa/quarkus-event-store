@@ -1,5 +1,6 @@
 package com.getlipa.event.store.deployment;
 
+import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.proto.PayloadClassRecorder;
 import com.getlipa.eventstore.core.subscription.SubscriptionController;
 import com.getlipa.eventstore.core.subscription.cdi.EffectiveStream;
@@ -55,7 +56,6 @@ class EventStoreProcessor {
     private static final Logger log = LoggerFactory.getLogger(EventStoreProcessor.class);
 
     private static final String FEATURE = "event-store";
-
     @BuildStep
     FeatureBuildItem feature() {
         return new FeatureBuildItem(FEATURE);
@@ -181,21 +181,21 @@ class EventStoreProcessor {
 
     @BuildStep
     AnnotationsTransformerBuildItem transformByTypeSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.ByType.class, EffectiveStream.ByType.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByType.class, EffectiveStream.ByType.class, Event.EVENT_TYPE_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformBySeriesTypeSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesType.class, EffectiveStream.BySeriesType.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesType.class, EffectiveStream.BySeriesType.class, Event.EVENT_SERIES_TYPE_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformBySeriesIdSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesId.class, EffectiveStream.BySeriesId.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.BySeriesId.class, EffectiveStream.BySeriesId.class, Event.EVENT_SERIES_ID_NAMESPACE);
     }
 
     @BuildStep
     AnnotationsTransformerBuildItem transformByCorrelationIdSubscriptionBeans() {
-        return UuidAnnotationTransformerBuildItem.create(Stream.ByCorrelationId.class, EffectiveStream.ByCorrelationId.class);
+        return UuidAnnotationTransformerBuildItem.create(Stream.ByCorrelationId.class, EffectiveStream.ByCorrelationId.class, Event.EVENT_CORRELATION_ID_NAMESPACE);
     }
 }

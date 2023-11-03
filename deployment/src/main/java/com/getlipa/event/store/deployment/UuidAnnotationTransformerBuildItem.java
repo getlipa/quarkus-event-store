@@ -1,18 +1,20 @@
 package com.getlipa.event.store.deployment;
 
+import com.getlipa.eventstore.core.UuidGenerator;
 import io.quarkus.arc.deployment.AnnotationsTransformerBuildItem;
 import io.quarkus.arc.processor.AnnotationsTransformer;
 import org.jboss.jandex.AnnotationValue;
 
 import java.lang.annotation.Annotation;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 public class UuidAnnotationTransformerBuildItem {
 
+    private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
+
     public static AnnotationsTransformerBuildItem create(
             final Class<? extends Annotation> stringAnnotation,
-            final Class<? extends Annotation> uuidAnnotation
+            final Class<? extends Annotation> uuidAnnotation,
+            final String namespace
     ) {
         return new AnnotationsTransformerBuildItem(AnnotationsTransformer.appliedToClass()
                 .whenClass(c -> c.hasAnnotation(stringAnnotation))
@@ -22,14 +24,14 @@ public class UuidAnnotationTransformerBuildItem {
                                     .value()
                                     .asString();
                             c.transform()
-                                    .add(uuidAnnotation, toUUIDAnnotationValue(eventType))
+                                    .add(uuidAnnotation, toUUIDAnnotationValue(namespace, eventType))
                                     .done();
                         }
                 ));
     }
 
-    static AnnotationValue toUUIDAnnotationValue(String string) {
-        final var uuid = UUID.nameUUIDFromBytes(string.getBytes(StandardCharsets.UTF_8)).toString();
+    static AnnotationValue toUUIDAnnotationValue(final String namespace, final String string) {
+        final String uuid = uuidGenerator.generate(namespace, string).toString();
         return AnnotationValue.createStringValue("uuid", uuid);
     }
 }

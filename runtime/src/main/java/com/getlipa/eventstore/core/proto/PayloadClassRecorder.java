@@ -27,7 +27,7 @@ public class PayloadClassRecorder {
                     .invoke(null);
             final var parser = (Parser<Message>) messageClass.getMethod(PARSER_FACTORY_METHOD_NAME).invoke(null);
             return beanContainer -> beanContainer.beanInstance(PayloadParser.class)
-                    .register(ProtoUtil.toUUID(descriptor.getFullName()), parser);
+                    .register(ProtoUtil.toUUID(descriptor), parser);
         } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
            throw new IllegalStateException("Failed to record payload parser.", e);
         }

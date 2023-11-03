@@ -1,16 +1,20 @@
 package com.getlipa.eventstore.core.proto;
 
 import com.getlipa.eventstore.common.Common;
+import com.getlipa.eventstore.core.UuidGenerator;
+import com.getlipa.eventstore.core.event.Event;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Timestamp;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class ProtoUtil {
+
+    private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
 
     public static Common.Payload convert(Payload<?> payload) {
         return Common.Payload.newBuilder()
@@ -48,8 +52,12 @@ public class ProtoUtil {
         return uuid;
     }
 
-    public static UUID toUUID(String data) {
-        return UUID.nameUUIDFromBytes(data.getBytes(StandardCharsets.UTF_8));
+    public static UUID toUUID(final String namespace, final String data) {
+        return uuidGenerator.generate(namespace, data);
+    }
+
+    public static UUID toUUID(final Descriptors.Descriptor descriptors) {
+        return toUUID(Event.EVENT_TYPE_NAMESPACE, descriptors.getFullName());
     }
 
     public static UUID toUUID(ByteString bytes) {

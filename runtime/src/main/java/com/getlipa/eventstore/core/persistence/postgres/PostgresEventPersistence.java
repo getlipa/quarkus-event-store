@@ -48,7 +48,7 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     ) {
         final var jpaEvent = JpaEvent.builder(event)
                 .seriesIndex(seriesIndex.getValue())
-                .seriesType(ProtoUtil.toUUID(selector.getSeriesType()))
+                .seriesType(ProtoUtil.toUUID(Event.EVENT_SERIES_TYPE_NAMESPACE, selector.getSeriesType()))
                 .seriesId(selector.getSeriesId())
                 .build();
         jpaEvent.persist();
