@@ -20,10 +20,6 @@ public class Payload<T extends Message> implements AnyPayload {
         return create((Supplier<T>) () -> PayloadParser.instance().parse(payload));
     }
 
-    public static <T extends Message> Payload<T> create(ProtoEncodable<T> protoEncodable) {
-        return create((Supplier<T>) protoEncodable::encodeToProto);
-    }
-
     public static <T extends Message> Payload<T> create(T payload) {
         return create((Supplier<T>) () -> payload);
     }

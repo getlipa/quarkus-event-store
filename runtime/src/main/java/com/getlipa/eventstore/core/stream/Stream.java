@@ -1,21 +1,23 @@
 package com.getlipa.eventstore.core.stream;
 
+import com.getlipa.eventstore.core.event.selector.Selector;
 import com.getlipa.eventstore.core.persistence.EventPersistence;
-import com.getlipa.eventstore.core.stream.options.Direction;
-import com.getlipa.eventstore.core.stream.options.EventReader;
-import com.getlipa.eventstore.core.stream.options.ReadOptions;
-import com.getlipa.eventstore.core.stream.selector.Events;
+import com.getlipa.eventstore.core.stream.reader.Direction;
+import com.getlipa.eventstore.core.stream.reader.EventReader;
+import io.vertx.core.Vertx;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class Stream {
 
-    protected final Events.Selector selector;
+    private final Vertx vertx;
+
+    protected final Selector selector;
 
     protected final EventPersistence eventPersistence;
 
     public EventReader read(Direction direction) {
-        return new EventReader(selector, eventPersistence, ReadOptions.builder()
+        return new EventReader(vertx, selector, eventPersistence, direction.readOptions()
                 .direction(direction)
         );
     }

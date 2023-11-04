@@ -2,113 +2,123 @@ package com.getlipa.eventstore.core.event;
 
 import com.getlipa.eventstore.core.UuidGenerator;
 import com.getlipa.eventstore.core.proto.Payload;
-import com.getlipa.eventstore.core.proto.ProtoEncodable;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
-import com.getlipa.eventstore.subscriptions.Subscriptions;
+import com.getlipa.eventstore.subscriptions.Projections;
 import com.google.protobuf.Message;
+import io.vertx.core.Future;
 import lombok.Getter;
-import lombok.ToString;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
 @Getter
-@ToString(onlyExplicitlyIncluded = true, callSuper = true)
+//@ToString(onlyExplicitlyIncluded = true, callSuper = true)
 public class Event<T extends Message> extends AbstractEvent<T> implements AnyEvent {
 
 
     public static final String EVENT_ID_NAMESPACE = "$event-id";
     public static final String EVENT_TYPE_NAMESPACE = Payload.PAYLOAD_TYPE_NAMESPACE;
-    public static final String EVENT_SERIES_TYPE_NAMESPACE = "$event-series-type";
-    public static final String EVENT_SERIES_ID_NAMESPACE = "$event-series-id";
+    public static final String EVENT_LOG_DOMAIN_NAMESPACE = "$event-series-type";
+    public static final String EVENT_LOG_ID_NAMESPACE = "$event-series-id";
     public static final String EVENT_CORRELATION_ID_NAMESPACE = "$event-correlation-id";
     public static final String EVENT_CAUSATION_ID_NAMESPACE = "$event-causation-id";
 
 
     private final long position;
 
-    private final long seriesIndex;
 
-    private final UUID seriesType;
+    /*
+    FIXME: Alternative names: !!!!!!!!!!
+    * EventLog / Log / Log Book / Journal -> indicate completenes
+    * Compendium
+     */
+    private final long logIndex;
 
-    private final UUID seriesId;
+    private final String logDomain;
+
+    private final UUID logId;
+
     private static final UuidGenerator uuidGenerator = UuidGenerator.INSTANCE;
 
-    @lombok.Builder(setterPrefix = "with", buildMethodName = "withPayload")
     public Event(
-            UUID id,
-            UUID causationId,
-            UUID correlationId,
-            OffsetDateTime createdAt,
-            Payload<T> payload,
-            long position,
-            long seriesIndex,
-            UUID seriesType,
-            UUID seriesId
+            final UUID id,
+            final UUID causationId,
+            final UUID correlationId,
+            final OffsetDateTime createdAt,
+            final Payload<T> payload,
+            final long position,
+            final long logIndex,
+            final String logDomain,
+            final UUID logId
     ) {
         super(id, causationId, correlationId, createdAt, payload);
         this.position = position;
-        this.seriesIndex = seriesIndex;
-        this.seriesType = seriesType;
-        this.seriesId = seriesId;
+        this.logIndex = logIndex;
+        this.logDomain = logDomain;
+        this.logId = logId;
     }
 
-    public static AnyEvent from(Payload<Subscriptions.Event> eventPayload) {
-        return from(eventPayload.get());
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static AnyEvent from(Subscriptions.Event event) {
-        return Event.builder().decodeFromProto(event);
+    public static AnyEvent from(final Projections.Event event) {
+        return builder()
+                .withId(ProtoUtil.toUUID(event.getId()))
+                .withPosition(event.getPosition())
+                .withLogIndex(event.getLogIndex())
+                .withLogDomain(event.getLogDomain())
+                .withLogId(ProtoUtil.toUUID(event.getLogId()))
+                .withCausationId(ProtoUtil.toUUID(event.getCausationId()))
+                .withCorrelationId(ProtoUtil.toUUID(event.getCorrelationId()))
+                .withCreatedAt(OffsetDateTime.ofInstant(Instant.ofEpochSecond(
+                        event.getCreatedAt().getSeconds(),
+                        event.getCreatedAt().getNanos()), ZoneId.of("UTC"))
+                )
+                .withPayload(Payload.create(event.getPayload()));
     }
 
-    public static <T extends Message> EventBuilder<T> from(EventMetadata event) {
-        return Event.<T>builder()
+    public static Builder from(final EventMetadata event) {
+        return builder()
                 .withId(event.getId())
                 .withPosition(event.getPosition())
-                .withSeriesIndex(event.getSeriesIndex())
-                .withSeriesType(event.getSeriesType())
-                .withSeriesId(event.getSeriesId())
+                .withLogIndex(event.getLogIndex())
+                .withLogDomain(event.getLogDomain())
+                .withLogId(event.getLogId())
                 .withCausationId(event.getCausationId())
                 .withCorrelationId(event.getCorrelationId())
                 .withCreatedAt(event.getCreatedAt());
     }
 
-    public static EphemeralEvent.EphemeralEventBuilder<Message> create() {
-        return init();
-    }
-
-    public static EphemeralEvent.EphemeralEventBuilder<Message> withId(UUID id) {
+    public static EphemeralEvent.Builder withId(final UUID id) {
         return init().withId(id);
     }
 
-    public static EphemeralEvent.EphemeralEventBuilder<Message> withCausationId(UUID causationId) {
+    public static EphemeralEvent.Builder withCausationId(final UUID causationId) {
         return init().withCausationId(causationId);
     }
 
-    public static EphemeralEvent.EphemeralEventBuilder<Message> withCorrelationId(UUID correlationId) {
+    public static EphemeralEvent.Builder withCorrelationId(final UUID correlationId) {
         return init().withCorrelationId(correlationId);
     }
 
-    public static EphemeralEvent.EphemeralEventBuilder<Message> withCreatedAt(OffsetDateTime createdAt) {
+    public static EphemeralEvent.Builder withCreatedAt(final OffsetDateTime createdAt) {
         return init().withCreatedAt(createdAt);
     }
 
-    public static <T extends Message> EphemeralEvent<T> withPayload(T data) {
+    public static <T extends Message> EphemeralEvent<T> withPayload(final T data) {
         return init().withPayload(data);
     }
 
-    private static EphemeralEvent.EphemeralEventBuilder<Message> init() {
-        return EphemeralEvent.create()
-                .withId(UUID.randomUUID())
-                .withCausationId(UUID.randomUUID())
-                .withCorrelationId(UUID.randomUUID())
-                .withCreatedAt(OffsetDateTime.now());
+    private static EphemeralEvent.Builder init() {
+        return EphemeralEvent.create();
     }
 
-    public EphemeralEvent.EphemeralEventBuilder<Message> causeOther(String reason) {
+    public EphemeralEvent.Builder causeOther(final String reason) {
         final var deterministicId = uuidGenerator.generate(Event.EVENT_ID_NAMESPACE, String.format("%s-%s", getId(), reason));
         return Event.withCausationId(getId())
                 .withId(deterministicId);
@@ -116,21 +126,21 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
 
     @Override
     @SuppressWarnings("unchecked")
-    public <P extends Message> Event<T> on(Class<P> type, AnyEvent.Handler<P> handler) {
+    public <P extends Message> Event<T> on(final Class<P> type, final Handler<P> handler) {
         if (type.isInstance(getPayload().get())) {
-            handler.handle((Event<P>) this);
+            handler.handle((Event<P>) this); // TODO: future?
         }
         return this;
     }
 
     @Override
-    protected Subscriptions.Event encodeToProto() {
-        return Subscriptions.Event.newBuilder()
+    public Projections.Event toProto() {
+        return Projections.Event.newBuilder()
                 .setId(ProtoUtil.convert(getId()))
                 .setPosition(getPosition())
-                .setSeriesIndex(getSeriesIndex())
-                .setSeriesType(ProtoUtil.convert(getSeriesType()))
-                .setSeriesId(ProtoUtil.convert(getSeriesId()))
+                .setLogIndex(getLogIndex())
+                .setLogDomain(getLogDomain())
+                .setLogId(ProtoUtil.convert(getLogId()))
                 .setCreatedAt(ProtoUtil.convert(getCreatedAt()))
                 .setCausationId(ProtoUtil.convert(getCausationId()))
                 .setCorrelationId(ProtoUtil.convert(getCorrelationId()))
@@ -138,40 +148,51 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
                 .build();
     }
 
-    public static class EventBuilder<T extends Message> extends ProtoEncodable.Builder<Event<T>, Subscriptions.Event> {
+    @Override
+    public String toString() {
+        return String.format(
+                "%s(%s %s-%s@%s @%s)",
+                getPayload().getType().getSimpleName(),
+                id,
+                logDomain,
+                logId,
+                logIndex,
+                position
+        );
+    }
 
-        @Override
-        protected Event<T> decodeFromProto(Subscriptions.Event event) {
-            return Event.builder()
-                    .withId(ProtoUtil.toUUID(event.getId()))
-                    .withPosition(event.getPosition())
-                    .withSeriesIndex(event.getSeriesIndex())
-                    .withSeriesType(ProtoUtil.toUUID(event.getSeriesType()))
-                    .withSeriesId(ProtoUtil.toUUID(event.getSeriesId()))
-                    .withCausationId(ProtoUtil.toUUID(event.getCausationId()))
-                    .withCorrelationId(ProtoUtil.toUUID(event.getCorrelationId()))
-                    .withCreatedAt(OffsetDateTime.ofInstant(Instant.ofEpochSecond(
-                            event.getCreatedAt().getSeconds(),
-                            event.getCreatedAt().getNanos()), ZoneId.of("UTC"))
-                    )
-                    .withPayload(Payload.create(event.getPayload()));
-        }
+    public interface Handler<T extends Message> {
 
-        public <P extends Message> Event<P> withPayload(P payload) {
+        Future<Void> handle(Event<T> event);
+    }
+
+    @Setter
+    @Accessors(fluent = true)
+    public static class Builder extends AbstractEvent.Builder<Builder> {
+
+        private long withPosition;
+
+        private long withLogIndex;
+
+        private String withLogDomain;
+
+        private UUID withLogId;
+
+        public <T extends Message> Event<T> withPayload(final T payload) {
             return withPayload(Payload.create(payload));
         }
 
-        public <P extends Message> Event<P> withPayload(Payload<P> payload) {
+        public <T extends Message> Event<T> withPayload(final Payload<T> payload) {
             return new Event<>(
-                    id,
-                    causationId,
-                    correlationId,
-                    createdAt,
+                    withId,
+                    withCausationId,
+                    withCorrelationId,
+                    withCreatedAt,
                     payload,
-                    position,
-                    seriesIndex,
-                    seriesType,
-                    seriesId
+                    withPosition,
+                    withLogIndex,
+                    withLogDomain,
+                    withLogId
             );
         }
     }

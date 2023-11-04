@@ -8,25 +8,28 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
 import java.io.ObjectInputStream;
-import java.util.function.Supplier;
 
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class ProtoCodec<T extends ProtoEncodable<P>, P extends GeneratedMessageV3> implements MessageCodec<T, T> {
+public class ProtoCodec<T, P extends GeneratedMessageV3> implements MessageCodec<T, T> {
 
     private final String name;
 
-    private final Supplier<ProtoEncodable.Builder<T, P>> builderSupplier;
+    private final AnyPayload.Encoder<T, P> encoder;
 
-    public static <T extends ProtoEncodable<P>, P extends GeneratedMessageV3> ProtoCodec<T, P> create(
+    private final AnyPayload.Decoder<T, P> decoder;
+
+
+    public static <T, P extends GeneratedMessageV3> ProtoCodec<T, P> create(
             final String name,
-            final Supplier<ProtoEncodable.Builder<T, P>> builderSupplier
+            final AnyPayload.Encoder<T, P> encoder,
+            final AnyPayload.Decoder<T, P> decoder
     ) {
-        return new ProtoCodec<>(name, builderSupplier);
+        return new ProtoCodec<>(name, encoder, decoder);
     }
 
     @Override
     public void encodeToWire(Buffer buffer, T wrapped) {
-        var bytes = SerializableUtils.toBytes(wrapped.encodeToProto());
+        var bytes = SerializableUtils.toBytes(encoder.encode(wrapped));
         buffer.appendInt(bytes.length);
         buffer.appendBytes(bytes);
     }
@@ -36,8 +39,7 @@ public class ProtoCodec<T extends ProtoEncodable<P>, P extends GeneratedMessageV
         var length = buffer.getInt(pos);
         pos += 4;
         var bytes = buffer.getBytes(pos, pos + length);
-        return builderSupplier.get()
-                .decodeFromProto(((P) SerializableUtils.fromBytes(bytes, ObjectInputStream::new)));
+        return decoder.decode(((P) SerializableUtils.fromBytes(bytes, ObjectInputStream::new)));
     }
 
     @Override

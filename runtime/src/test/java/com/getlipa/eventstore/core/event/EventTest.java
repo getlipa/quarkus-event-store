@@ -17,12 +17,12 @@ class EventTest {
 
     @Test
     public void correctEventSeriesTypeNamespaceValue() {
-        Assertions.assertEquals("$event-series-type", Event.EVENT_SERIES_TYPE_NAMESPACE);
+        Assertions.assertEquals("$event-series-type", Event.EVENT_LOG_DOMAIN_NAMESPACE);
     }
 
     @Test
     public void correctEventSeriesIdNamespaceValue() {
-        Assertions.assertEquals("$event-series-id", Event.EVENT_SERIES_ID_NAMESPACE);
+        Assertions.assertEquals("$event-series-id", Event.EVENT_LOG_ID_NAMESPACE);
     }
     @Test
     public void correctEventCorrelationIdNamespaceValue() {

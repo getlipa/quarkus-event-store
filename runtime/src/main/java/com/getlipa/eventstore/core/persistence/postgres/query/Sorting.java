@@ -1,6 +1,6 @@
 package com.getlipa.eventstore.core.persistence.postgres.query;
 
-import com.getlipa.eventstore.core.stream.options.Direction;
+import com.getlipa.eventstore.core.stream.reader.Direction;
 import io.quarkus.panache.common.Sort;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Sorting {
 
-    FORWARD("<", Sort.ascending("position")),
-    BACKWARD(">", Sort.descending("position"));
+    FORWARD(">=", "<", Sort.ascending("position")),
+    BACKWARD("<=", ">", Sort.descending("position"));
 
     private final String operator;
+
+    private final String oppositeOperator;
 
     private final Sort sort;
 

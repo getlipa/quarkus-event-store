@@ -1,30 +1,35 @@
 package com.getlipa.eventstore.core.persistence.postgres;
 
+import com.getlipa.eventstore.core.event.AnyEvent;
 import com.getlipa.eventstore.core.event.EphemeralEvent;
 import com.getlipa.eventstore.core.event.Event;
-import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
+import com.getlipa.eventstore.core.event.selector.ByLogSelector;
+import com.getlipa.eventstore.core.event.selector.Selector;
+import com.getlipa.eventstore.core.event.logindex.LogIndex;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.core.persistence.exception.InvalidIndexException;
+import com.getlipa.eventstore.core.persistence.postgres.query.QueryExecutor;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
-import com.getlipa.eventstore.core.stream.options.ReadOptions;
-import com.getlipa.eventstore.core.stream.selector.ByCausationIdSelector;
-import com.getlipa.eventstore.core.stream.selector.ByCorrelationIdSelector;
-import com.getlipa.eventstore.core.stream.selector.BySeriesTypeSelector;
-import com.getlipa.eventstore.core.stream.selector.ByStreamSelector;
-import com.getlipa.eventstore.core.stream.selector.ByTypeSelector;
+import com.getlipa.eventstore.core.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.vertx.core.Future;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.RollbackException;
 import org.hibernate.exception.ConstraintViolationException;
 
-import java.util.Iterator;
+import java.util.*;
+
 
 @ApplicationScoped
 public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
 
+    @Inject
+    QueryExecutor queryExecutor;
+
     @Override
     protected void handleRollback(RollbackException rollbackException) throws EventAppendException {
-        if (! (rollbackException.getCause() instanceof ConstraintViolationException)) {
+        if (!(rollbackException.getCause() instanceof ConstraintViolationException)) {
             throw EventAppendException.from(rollbackException);
         }
         final var violation = (ConstraintViolationException) rollbackException.getCause();
@@ -33,7 +38,7 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
         switch (violation.getConstraintName()) {
             case "event_id_unique":
                 throw EventAppendException.duplicateEvent(violation);
-            case "consecutive_series_index":
+            case "consecutive_log_index":
                 throw InvalidIndexException.nonConsecutiveIndex(null);
             default:
                 throw EventAppendException.from(violation);
@@ -41,48 +46,29 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     }
 
     @Override
-    protected <T extends Message> Event<T> doAppend(
-            ByStreamSelector selector,
-            SeriesIndex seriesIndex,
-            EphemeralEvent<T> event
+    protected <P extends Message> void doAppend(
+            ByLogSelector selector,
+            LogIndex logIndex,
+            EphemeralEvent<P> event
     ) {
         final var jpaEvent = JpaEvent.builder(event)
-                .seriesIndex(seriesIndex.getValue())
-                .seriesType(ProtoUtil.toUUID(Event.EVENT_SERIES_TYPE_NAMESPACE, selector.getSeriesType()))
-                .seriesId(selector.getSeriesId())
+                .logIndex(logIndex.getValue())
+                .logDomainUuid(ProtoUtil.toUUID(Event.EVENT_LOG_DOMAIN_NAMESPACE, selector.getLogDomain()))
+                .logDomain(selector.getLogDomain())
+                .logId(selector.getLogId())
                 .build();
         jpaEvent.persist();
-        return Event.<T>from(jpaEvent)
-                .withPayload(event.getPayload());
     }
 
     @Override
-    public Iterator<Event<Message>> read(ByStreamSelector selector, ReadOptions readOptions) {
+    public Future<AnyEvent> read(UUID id) {
+        return vertx.executeBlocking(result -> result.complete(queryExecutor.find(id)));
+    }
+
+    @Override
+    public Future<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions) {
         final var query = EventQuery.create(selector, readOptions);
-        return JpaEvent.<JpaEvent>find(query.getQuery(), query.getSort(), query.getParameters())
-                .range(0, readOptions.limit())
-                .stream()
-                .map(JpaEvent::toPersistedEvent)
-                .iterator();
-    }
 
-    @Override
-    public Iterator<Event<Message>> read(BySeriesTypeSelector selector, ReadOptions readOptions) {
-        return null;
-    }
-
-    @Override
-    public Iterator<Event<Message>> read(ByCausationIdSelector selector, ReadOptions readOptions) {
-        return null;
-    }
-
-    @Override
-    public Iterator<Event<Message>> read(ByCorrelationIdSelector selector, ReadOptions readOptions) {
-        return null;
-    }
-
-    @Override
-    public Iterator<Event<Message>> read(ByTypeSelector selector, ReadOptions readOptions) {
-        return null;
+        return vertx.executeBlocking(result -> result.complete(queryExecutor.execute(query).iterator()));
     }
 }

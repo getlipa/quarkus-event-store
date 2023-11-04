@@ -16,10 +16,10 @@ public interface EventMetadata {
 
      long getPosition();
 
-     UUID getSeriesType();
+     String getLogDomain();
 
-     UUID getSeriesId();
+     UUID getLogId();
 
-     long getSeriesIndex();
+     long getLogIndex();
 
 }

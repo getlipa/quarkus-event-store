@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package subscriptions;
+
+option java_package = "com.getlipa.eventstore.subscriptions";
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+
+message ListeningStarted {
+  bytes id = 1;
+}
+
+message ListeningStopped {
+  bytes id = 1;
+}
+
+message CatchUpStarted {
+  bytes id = 1;
+}
+
+
+message CatchUpCompleted {
+  bytes id = 1;
+  int64 tip = 2;
+}
+
+message IntermediateCheckpointReached {
+  bytes origin = 1;
+  int64 tip = 2;
+}
+
+message CheckpointProcessStarted {
+  bytes id = 1;
+}
+
+message CheckpointReached {
+  bytes origin = 1;
+  int64 tip = 2;
+  // correlationId: projection manager id
+
+}
+
+message CheckpointProcessStopped {
+  bytes id = 1;
+}
+
+message Event {
+  common.Payload payload = 1;
+  bytes id = 2;
+  int64 position = 3;
+  int64 logIndex = 4;
+  string logDomain = 5;
+  bytes logId = 6;
+  bytes causationId = 7;
+  bytes correlationId = 8;
+  google.protobuf.Timestamp createdAt = 9;
+}

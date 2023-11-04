@@ -1,6 +1,6 @@
 package com.getlipa.eventstore.core.persistence.exception;
 
-import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
+import com.getlipa.eventstore.core.event.logindex.LogIndex;
 import lombok.Getter;
 
 @Getter
@@ -10,11 +10,11 @@ public class InvalidIndexException extends EventAppendException {
         super(message);
     }
 
-    public static InvalidIndexException indexAlreadyUsed(SeriesIndex index) {
+    public static InvalidIndexException indexAlreadyUsed(LogIndex index) {
         return new InvalidIndexException(String.format("Index is already in use: %s", index));
     }
 
-    public static InvalidIndexException nonConsecutiveIndex(SeriesIndex index) {
+    public static InvalidIndexException nonConsecutiveIndex(LogIndex index) {
         return new InvalidIndexException(String.format("Non-consecutive index: %s", index));
     }
 }

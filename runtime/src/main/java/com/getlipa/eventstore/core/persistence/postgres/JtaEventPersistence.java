@@ -1,12 +1,16 @@
 package com.getlipa.eventstore.core.persistence.postgres;
 
+import com.arjuna.ats.arjuna.coordinator.TwoPhaseCoordinator;
+import com.getlipa.eventstore.core.event.AnyEvent;
 import com.getlipa.eventstore.core.event.EphemeralEvent;
 import com.getlipa.eventstore.core.event.Event;
-import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
+import com.getlipa.eventstore.core.event.logindex.LogIndex;
 import com.getlipa.eventstore.core.persistence.EventPersistence;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
-import com.getlipa.eventstore.core.stream.selector.ByStreamSelector;
+import com.getlipa.eventstore.core.event.selector.ByLogSelector;
 import com.google.protobuf.Message;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import jakarta.inject.Inject;
 import jakarta.transaction.HeuristicMixedException;
 import jakarta.transaction.HeuristicRollbackException;
@@ -18,20 +22,45 @@ import jakarta.transaction.SystemException;
 import jakarta.transaction.Transaction;
 import jakarta.transaction.TransactionManager;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
+
+import java.util.Collection;
+import java.util.List;
 
 @Slf4j
 public abstract class JtaEventPersistence<T> implements EventPersistence {
 
+    private static final String[] NOISY_LOGGERS_ON_INSERT_CONFLICT = new String[]{
+            SqlExceptionHelper.class.getName(),
+            "com.arjuna.ats.arjuna"
+    };
+
     @Inject
     TransactionManager transactionManager;
 
+    @Inject
+    Vertx vertx;
+
     @Override
-    public <T extends Message> Event<T> append(ByStreamSelector selector, SeriesIndex seriesIndex, EphemeralEvent<T> event) throws EventAppendException {
+    public <P extends Message> Future<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) {
+        return vertx.executeBlocking(result -> {
+            try {
+                appendBlocking(selector, logIndex, event);
+            } catch (EventAppendException e) {
+                result.fail(e);
+                return;
+            }
+            read(event.getId())
+                    .onSuccess(persisted -> result.complete(Event.from(persisted).withPayload(event.getPayload())))
+                    .onFailure(result::fail);
+        });
+    }
+
+    <P extends Message> void appendBlocking(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) throws EventAppendException {
         try {
             final var suspendedTransaction = beginTransaction();
-            final var persisted = doAppend(selector, seriesIndex, event);
+            doAppend(selector, logIndex, event);
             commitTransaction(suspendedTransaction);
-            return persisted;
         } catch (EventAppendException e) {
             throw e;
         } catch (Throwable e) {
@@ -43,7 +72,7 @@ public abstract class JtaEventPersistence<T> implements EventPersistence {
 
     protected abstract void handleRollback(RollbackException rollbackException) throws EventAppendException;
 
-    protected abstract <T extends Message> Event<T> doAppend(ByStreamSelector selector, SeriesIndex seriesIndex, EphemeralEvent<T> event) throws EventAppendException;
+    protected abstract <P extends Message> void doAppend(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) throws EventAppendException;
 
     private Transaction beginTransaction() throws SystemException, NotSupportedException {
         Transaction currentTransaction = null;
@@ -54,7 +83,8 @@ public abstract class JtaEventPersistence<T> implements EventPersistence {
         return currentTransaction;
     }
 
-    private void commitTransaction(Transaction suspendedTransaction) throws SystemException, EventAppendException {
+    private void commitTransaction() throws SystemException, EventAppendException {
+        final var mutedLogger = LoggerUtil.mute(NOISY_LOGGERS_ON_INSERT_CONFLICT);
         try {
             transactionManager.commit();
         } catch (RollbackException e) {
@@ -68,7 +98,13 @@ public abstract class JtaEventPersistence<T> implements EventPersistence {
             log.warn(
                     "All transitions have been rolled back due to a heuristic decision."
             );
+        } finally {
+            mutedLogger.restore();
         }
+    }
+
+    private void commitTransaction(Transaction suspendedTransaction) throws SystemException, EventAppendException {
+        commitTransaction();
         if (suspendedTransaction != null) {
             try {
                 transactionManager.resume(suspendedTransaction);
@@ -77,6 +113,7 @@ public abstract class JtaEventPersistence<T> implements EventPersistence {
             }
         }
     }
+
 
     private void rollbackTransaction() {
         try {

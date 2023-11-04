@@ -17,25 +17,39 @@
 package com.getlipa.event.store.it;
 
 import com.getlipa.eventstore.core.EventStore;
-import com.getlipa.eventstore.core.actor.Gateway;
-import com.getlipa.eventstore.core.actor.messaging.Msg;
 import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
-import com.getlipa.eventstore.core.event.seriesindex.SeriesIndex;
-import com.getlipa.eventstore.core.stream.selector.Events;
+import com.getlipa.eventstore.core.event.logindex.LogIndex;
+import com.getlipa.eventstore.core.event.Events;
+import com.getlipa.eventstore.core.projection.projected.ProjectedLog;
+import com.getlipa.eventstore.core.projection.projected.ProjectedStream;
 import com.getlipa.eventstore.example.event.Example;
+import com.getlipa.eventstore.subscriptions.Projections;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Path("/event-store")
 @ApplicationScoped
 @RequiredArgsConstructor
 public class EventStoreResource {
     // add some rest methods here
 
-    private final Gateway<DemoActor> gateway;
+    //@Inject
+    //@Any
+    ProjectedLog<DemoProjection> projectedLog;
+
+    @Inject
+    @Any
+    Instance<ProjectedStream<DemoProjection>> projected;
+
 
     private final EventStore eventStore;
 
@@ -43,28 +57,33 @@ public class EventStoreResource {
     public String hello() {
 
 
-        final var test = gateway.compute(actor -> actor.doSomething(
-                Msg.withPayload(Example.Simple.newBuilder().build()))
-        );
-
-        final var test2 = gateway.compute(actor -> actor.doSomething(
-                Msg.withPayload(Example.Simple.newBuilder().build()))
-        );
-
-        return "Hello event-store - " + test;
+        return "Hello event-store - ";
     }
 
     @GET
     @Path("append")
-    public String append() throws EventAppendException {
+    public Uni<String> append() throws EventAppendException {
         final var event = Event.withPayload(Example.Simple.newBuilder()
                 .setData("test").build());
 
 
-        final var persisted = eventStore.stream(Events.bySeries("gugus", "gugus"))
-                .append(SeriesIndex.atAny(), event);
+        return Uni.createFrom().completionStage(eventStore.stream(Events.byLog("gugus", "gugus"))
+                .append(LogIndex.atAny(), event)
+                .map(e -> String.format("%s", e))
+                .toCompletionStage());
+    }
+
+    @GET
+    @Path("trigger")
+    public Uni<String> trigger() throws EventAppendException {
+        final var event = Event.withPayload(Projections.CatchUpStarted.newBuilder()
+                .build());
 
 
-        return persisted.toString();
+        return Uni.createFrom().completionStage(eventStore.stream(Events.byLog("projection-manager", "demo-projection"))
+                .append(LogIndex.atAny(), event)
+                .map(e -> String.format("%s", e))
+                .toCompletionStage()
+        );
     }
 }
