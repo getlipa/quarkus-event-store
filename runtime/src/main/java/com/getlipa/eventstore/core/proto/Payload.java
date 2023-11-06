@@ -10,6 +10,8 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class Payload<T extends Message> implements AnyPayload {
 
+    public static final String PAYLOAD_TYPE_NAMESPACE = "$payload-type";
+
     private final Supplier<T> payloadSupplier;
 
     private T payload;

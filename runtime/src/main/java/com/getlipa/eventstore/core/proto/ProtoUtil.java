@@ -41,15 +41,8 @@ public class ProtoUtil {
         return ByteString.copyFrom(toBytes(uuid));
     }
 
-    public static UUID toUUID(byte[] bytes) {
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-        long high = byteBuffer.getLong();
-        long low = byteBuffer.getLong();
-        return new UUID(high, low);
-    }
-
-    public static UUID toUUID(UUID uuid) {
-        return uuid;
+    public static UUID toUUID(final String namespace, byte[] bytes) {
+        return uuidGenerator.generate(namespace, bytes);
     }
 
     public static UUID toUUID(final String namespace, final String data) {
@@ -57,13 +50,12 @@ public class ProtoUtil {
     }
 
     public static UUID toUUID(final Descriptors.Descriptor descriptors) {
-        return toUUID(Event.EVENT_TYPE_NAMESPACE, descriptors.getFullName());
+        return toUUID(Payload.PAYLOAD_TYPE_NAMESPACE, descriptors.getFullName());
     }
 
-    public static UUID toUUID(ByteString bytes) {
-        return toUUID(bytes.toByteArray());
+    public static UUID toUUID(final String namespace, final ByteString bytes) {
+        return toUUID(namespace, bytes.toByteArray());
     }
-
     public static Timestamp convert(OffsetDateTime createdAt) {
         return convert(createdAt.toInstant());
     }

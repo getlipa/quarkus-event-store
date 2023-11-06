@@ -64,7 +64,7 @@ public class JpaEvent extends PanacheEntityBase implements EventMetadata {
                 .createdAt(event.getCreatedAt())
                 .correlationId(event.getCorrelationId())
                 .causationId(event.getCausationId())
-                .type(ProtoUtil.toUUID(event.getPayload().getTypeId()))
+                .type(event.getPayload().getTypeId())
                 .payload(event.getPayload().get().toByteArray());
     }
 

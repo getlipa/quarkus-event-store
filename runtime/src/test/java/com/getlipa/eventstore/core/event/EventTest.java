@@ -12,7 +12,7 @@ class EventTest {
 
     @Test
     public void correctEventTypeNamespaceValue() {
-        Assertions.assertEquals("$event-type", Event.EVENT_TYPE_NAMESPACE);
+        Assertions.assertEquals("$payload-type", Event.EVENT_TYPE_NAMESPACE);
     }
 
     @Test
@@ -27,5 +27,10 @@ class EventTest {
     @Test
     public void correctEventCorrelationIdNamespaceValue() {
         Assertions.assertEquals("$event-correlation-id", Event.EVENT_CORRELATION_ID_NAMESPACE);
+    }
+
+    @Test
+    public void causationEventCorrelationIdNamespaceValue() {
+        Assertions.assertEquals("$event-causation-id", Event.EVENT_CAUSATION_ID_NAMESPACE);
     }
 }

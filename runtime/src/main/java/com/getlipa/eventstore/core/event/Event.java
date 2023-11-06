@@ -21,10 +21,11 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
 
 
     public static final String EVENT_ID_NAMESPACE = "$event-id";
-    public static final String EVENT_TYPE_NAMESPACE = "$event-type";
+    public static final String EVENT_TYPE_NAMESPACE = Payload.PAYLOAD_TYPE_NAMESPACE;
     public static final String EVENT_SERIES_TYPE_NAMESPACE = "$event-series-type";
     public static final String EVENT_SERIES_ID_NAMESPACE = "$event-series-id";
     public static final String EVENT_CORRELATION_ID_NAMESPACE = "$event-correlation-id";
+    public static final String EVENT_CAUSATION_ID_NAMESPACE = "$event-causation-id";
 
 
     private final long position;
@@ -142,13 +143,13 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
         @Override
         protected Event<T> decodeFromProto(Subscriptions.Event event) {
             return Event.builder()
-                    .withId(ProtoUtil.toUUID(event.getId()))
+                    .withId(ProtoUtil.toUUID(EVENT_ID_NAMESPACE, event.getId()))
                     .withPosition(event.getPosition())
                     .withSeriesIndex(event.getSeriesIndex())
-                    .withSeriesType(ProtoUtil.toUUID(event.getSeriesType()))
-                    .withSeriesId(ProtoUtil.toUUID(event.getSeriesId()))
-                    .withCausationId(ProtoUtil.toUUID(event.getCausationId()))
-                    .withCorrelationId(ProtoUtil.toUUID(event.getCorrelationId()))
+                    .withSeriesType(ProtoUtil.toUUID(EVENT_SERIES_TYPE_NAMESPACE, event.getSeriesType()))
+                    .withSeriesId(ProtoUtil.toUUID(EVENT_SERIES_ID_NAMESPACE, event.getSeriesId()))
+                    .withCausationId(ProtoUtil.toUUID(EVENT_CAUSATION_ID_NAMESPACE, event.getCausationId()))
+                    .withCorrelationId(ProtoUtil.toUUID(EVENT_CORRELATION_ID_NAMESPACE, event.getCorrelationId()))
                     .withCreatedAt(OffsetDateTime.ofInstant(Instant.ofEpochSecond(
                             event.getCreatedAt().getSeconds(),
                             event.getCreatedAt().getNanos()), ZoneId.of("UTC"))
