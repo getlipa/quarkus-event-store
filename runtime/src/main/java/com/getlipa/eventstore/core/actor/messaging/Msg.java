@@ -1,6 +1,7 @@
 package com.getlipa.eventstore.core.actor.messaging;
 
 import com.getlipa.eventstore.actors.Actors;
+import com.getlipa.eventstore.core.event.Event;
 import com.getlipa.eventstore.core.proto.Payload;
 import com.getlipa.eventstore.core.proto.ProtoEncodable;
 import com.getlipa.eventstore.core.proto.ProtoUtil;
@@ -73,8 +74,8 @@ public class Msg<T extends Message> extends ProtoEncodable<Actors.Msg> implement
 
         @Override
         protected Msg<T> decodeFromProto(Actors.Msg command) {
-            return withCausationId(ProtoUtil.toUUID(command.getCausationId()))
-                    .withCorrelationId(ProtoUtil.toUUID(command.getCorrelationId()))
+            return withCausationId(ProtoUtil.toUUID(Event.EVENT_CAUSATION_ID_NAMESPACE, command.getCausationId()))
+                    .withCorrelationId(ProtoUtil.toUUID(Event.EVENT_CORRELATION_ID_NAMESPACE, command.getCorrelationId()))
                     .withPayload(Payload.create(command.getPayload()));
         }
     }
