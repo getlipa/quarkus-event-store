@@ -143,13 +143,13 @@ public class Event<T extends Message> extends AbstractEvent<T> implements AnyEve
         @Override
         protected Event<T> decodeFromProto(Subscriptions.Event event) {
             return Event.builder()
-                    .withId(ProtoUtil.toUUID(EVENT_ID_NAMESPACE, event.getId()))
+                    .withId(ProtoUtil.toUUID(event.getId()))
                     .withPosition(event.getPosition())
                     .withSeriesIndex(event.getSeriesIndex())
-                    .withSeriesType(ProtoUtil.toUUID(EVENT_SERIES_TYPE_NAMESPACE, event.getSeriesType()))
-                    .withSeriesId(ProtoUtil.toUUID(EVENT_SERIES_ID_NAMESPACE, event.getSeriesId()))
-                    .withCausationId(ProtoUtil.toUUID(EVENT_CAUSATION_ID_NAMESPACE, event.getCausationId()))
-                    .withCorrelationId(ProtoUtil.toUUID(EVENT_CORRELATION_ID_NAMESPACE, event.getCorrelationId()))
+                    .withSeriesType(ProtoUtil.toUUID(event.getSeriesType()))
+                    .withSeriesId(ProtoUtil.toUUID(event.getSeriesId()))
+                    .withCausationId(ProtoUtil.toUUID(event.getCausationId()))
+                    .withCorrelationId(ProtoUtil.toUUID(event.getCorrelationId()))
                     .withCreatedAt(OffsetDateTime.ofInstant(Instant.ofEpochSecond(
                             event.getCreatedAt().getSeconds(),
                             event.getCreatedAt().getNanos()), ZoneId.of("UTC"))

@@ -30,22 +30,4 @@ public class UuidGenerator {
         return generator.generate(name);
 
     }
-
-    public UUID generate(final String namespace, final byte[] name){
-
-        if (generators.containsKey(namespace)) {
-            return generators.get(namespace).generate(name);
-        }
-
-        if (!namespace.startsWith("$")) {
-            return Generators.nameBasedGenerator(defaultGenerator.generate(namespace)).generate(name);
-        }
-
-        NameBasedGenerator generator = Generators.nameBasedGenerator(defaultGenerator.generate(namespace));
-        generators.put(namespace, generator);
-
-        return generator.generate(name);
-
-    }
-
 }
