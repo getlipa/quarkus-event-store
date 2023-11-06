@@ -25,7 +25,7 @@ public class PayloadParser {
     }
 
     public <T extends Message> T parse(Common.Payload payload) {
-        return parse(ProtoUtil.toUUID(Payload.PAYLOAD_TYPE_NAMESPACE, payload.getType()), payload.getData().toByteArray());
+        return parse(ProtoUtil.toUUID(payload.getType()), payload.getData().toByteArray());
     }
 
     public <T extends Message> T parse(UUID type, byte[] payload) {
