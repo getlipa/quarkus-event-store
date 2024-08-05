@@ -1,9 +1,9 @@
 
 CREATE TABLE event (
-    "id" uuid NOT NULL,
+    "uuid" uuid NOT NULL,
     "position" BIGINT PRIMARY KEY,
     "logIndex" BIGINT NOT NULL,
-    "logDomain" text NOT NULL, --- TODO: normalize?
+    "logContext" text NOT NULL, --- TODO: normalize?
     "logDomainUuid" uuid NOT NULL,
     "logId" uuid NOT NULL,
     "type" uuid,
@@ -11,7 +11,7 @@ CREATE TABLE event (
     "correlationId" uuid NOT NULL,
     "causationId" uuid NOT NULL,
     "payload" bytea,
-    CONSTRAINT event_id_unique UNIQUE ("id"),
+    CONSTRAINT event_id_unique UNIQUE ("uuid"),
     CONSTRAINT event_log_index_unique UNIQUE ("logIndex", "logDomainUuid", "logId")
 );
 

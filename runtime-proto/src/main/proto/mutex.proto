@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mutex;
+
+option java_package = "com.getlipa.eventstore";
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+
+message LockAcquired {
+}
+
+message LockReleased {
+}

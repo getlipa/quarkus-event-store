@@ -4,6 +4,8 @@ package example.event;
 
 option java_package = "com.getlipa.eventstore.example.event";
 
+// FIXME: Remove
+
 message Simple {
   string data = 1;
 }

@@ -1,7 +1,7 @@
 package com.getlipa.event.store.deployment;
 
-import com.getlipa.eventstore.core.projection.projector.scope.ProjectorScopeContext;
-import com.getlipa.eventstore.core.projection.projector.scope.ProjectorScoped;
+import com.getlipa.eventstore.projection.projector.scope.ProjectorScopeContext;
+import com.getlipa.eventstore.projection.projector.scope.ProjectorScoped;
 import io.quarkus.arc.deployment.*;
 import io.quarkus.deployment.annotations.BuildStep;
 import org.slf4j.Logger;

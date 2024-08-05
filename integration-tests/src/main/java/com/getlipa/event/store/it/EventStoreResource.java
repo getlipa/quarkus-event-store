@@ -16,14 +16,16 @@
  */
 package com.getlipa.event.store.it;
 
-import com.getlipa.eventstore.core.EventStore;
-import com.getlipa.eventstore.core.event.Event;
-import com.getlipa.eventstore.core.persistence.exception.EventAppendException;
-import com.getlipa.eventstore.core.event.logindex.LogIndex;
-import com.getlipa.eventstore.core.event.Events;
-import com.getlipa.eventstore.core.projection.projected.ProjectedLog;
-import com.getlipa.eventstore.core.projection.projected.ProjectedStream;
-import com.getlipa.eventstore.example.event.Example;
+import com.getlipa.eventstore.EventStore;
+import com.getlipa.eventstore.aggregate.Logs;
+import com.getlipa.eventstore.event.Event;
+import com.getlipa.eventstore.identifier.Id;
+import com.getlipa.eventstore.it.BankAccount;
+import com.getlipa.eventstore.persistence.exception.EventAppendException;
+import com.getlipa.eventstore.event.logindex.LogIndex;
+import com.getlipa.eventstore.event.Events;
+import com.getlipa.eventstore.aggregate.Log;
+import com.getlipa.eventstore.aggregate.Aggregate;
 import com.getlipa.eventstore.subscriptions.Projections;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -32,58 +34,40 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.ExecutionException;
+
 @Slf4j
-@Path("/event-store")
+@Path("/account/{id}")
 @ApplicationScoped
 @RequiredArgsConstructor
 public class EventStoreResource {
-    // add some rest methods here
-
-    //@Inject
-    //@Any
-    ProjectedLog<DemoProjection> projectedLog;
 
     @Inject
-    @Any
-    Instance<ProjectedStream<DemoProjection>> projected;
-
-
-    private final EventStore eventStore;
+    Logs<AccountBalance> logs;
 
     @GET
-    public String hello() {
-
-
-        return "Hello event-store - ";
+    public Uni<Double> balance(@PathParam("id") String id) throws ExecutionException, InterruptedException {
+        return Uni.createFrom()
+                .completionStage(logs.get(Id.derive(id))
+                        .get()
+                        .map(AccountBalance::getBalance)
+                        .toCompletionStage()
+                );
     }
 
     @GET
-    @Path("append")
-    public Uni<String> append() throws EventAppendException {
-        final var event = Event.withPayload(Example.Simple.newBuilder()
-                .setData("test").build());
-
-
-        return Uni.createFrom().completionStage(eventStore.stream(Events.byLog("gugus", "gugus"))
-                .append(LogIndex.atAny(), event)
-                .map(e -> String.format("%s", e))
-                .toCompletionStage());
-    }
-
-    @GET
-    @Path("trigger")
-    public Uni<String> trigger() throws EventAppendException {
-        final var event = Event.withPayload(Projections.CatchUpStarted.newBuilder()
-                .build());
-
-
-        return Uni.createFrom().completionStage(eventStore.stream(Events.byLog("projection-manager", "demo-projection"))
-                .append(LogIndex.atAny(), event)
-                .map(e -> String.format("%s", e))
-                .toCompletionStage()
-        );
+    @Path("deposit")
+    public Uni<String> deposit(@PathParam("id") String id) throws ExecutionException, InterruptedException {
+        final var future = logs.get(Id.derive(id))
+                .append(LogIndex.atAny())
+                .withPayload(BankAccount.FundsDeposited.newBuilder()
+                        .setAmount(100)
+                        .build())
+                .map(event -> event.getId().toString());
+        return Uni.createFrom().completionStage(future.toCompletionStage());
     }
 }

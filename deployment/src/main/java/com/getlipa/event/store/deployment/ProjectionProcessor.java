@@ -1,19 +1,21 @@
 package com.getlipa.event.store.deployment;
 
-import com.getlipa.eventstore.core.UuidGenerator;
-import com.getlipa.eventstore.core.event.selector.Selector;
-import com.getlipa.eventstore.core.event.selector.SelectorFactory;
-import com.getlipa.eventstore.core.projection.extension.ExtensionFactory;
-import com.getlipa.eventstore.core.projection.extension.ProjectionExtension;
-import com.getlipa.eventstore.core.projection.mgmt.ProjectionManager;
-import com.getlipa.eventstore.core.projection.trgt.ProjectionTargetFactory;
-import com.getlipa.eventstore.core.projection.ProjectionMetadata;
-import com.getlipa.eventstore.core.projection.cdi.EventMatcher;
-import com.getlipa.eventstore.core.projection.projector.DispatchStrategy;
-import com.getlipa.eventstore.core.projection.projector.ProjectorGateway;
-import com.getlipa.eventstore.core.projection.cdi.Projection;
-import com.getlipa.eventstore.core.projection.cdi.Events;
-import com.getlipa.eventstore.core.projection.trgt.middleware.Apply;
+import com.getlipa.eventstore.aggregate.cdi.AggregateBean;
+import com.getlipa.eventstore.aggregate.cdi.AggregateCompanion;
+import com.getlipa.eventstore.aggregate.cdi.AggregateContext;
+import com.getlipa.eventstore.aggregate.cdi.AggregateType;
+import com.getlipa.eventstore.aggregate.context.Context;
+import com.getlipa.eventstore.projection.cdi.Projection;
+import com.getlipa.eventstore.projection.cdi.ProjectionBean;
+import com.getlipa.eventstore.projection.cdi.ProjectionCompanion;
+import com.getlipa.eventstore.projection.cdi.ProjectionName;
+import com.getlipa.eventstore.projection.extension.ExtensionFactory;
+import com.getlipa.eventstore.projection.extension.ProjectionExtension;
+import com.getlipa.eventstore.aggregate.hydration.AggregateHydratorFactory;
+import com.getlipa.eventstore.projection.ProjectionMetadata;
+import com.getlipa.eventstore.projection.projector.Projector;
+import com.getlipa.eventstore.aggregate.middleware.Use;
+import com.getlipa.eventstore.projection.projector.scope.ProjectorScoped;
 import io.quarkus.arc.deployment.*;
 import io.quarkus.arc.processor.AnnotationsTransformer;
 import io.quarkus.arc.processor.BeanInfo;
@@ -26,9 +28,6 @@ import org.jboss.jandex.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
-
-import static com.getlipa.eventstore.core.event.Event.EVENT_LOG_ID_NAMESPACE;
 import static io.quarkus.deployment.annotations.ExecutionTime.STATIC_INIT;
 
 class ProjectionProcessor {
@@ -37,182 +36,129 @@ class ProjectionProcessor {
 
     @BuildStep
     @Record(STATIC_INIT)
-    public void registerProjectionBeans(
+    public void registerProjectionCompanions(
             BeanDiscoveryFinishedBuildItem beanDiscovery,
             BuildProducer<SyntheticBeanBuildItem> syntheticBeans,
-            ProjectorGateway.BeanRecorder gatewayRecorder,
+            Projector.BeanRecorder gatewayRecorder,
             ProjectionMetadata.BeanRecorder metadataRecorder,
-            ProjectionTargetFactory.BeanRecorder projectionTargetFactoryRecorder,
+            AggregateHydratorFactory.BeanRecorder projectionTargetFactoryRecorder,
             ProjectionExtension.BeanRecorder extensionRecorder
     ) {
         beanDiscovery.beanStream()
-                .withQualifier(com.getlipa.eventstore.core.projection.cdi.ProjectionTarget.Any.class)
+                .withQualifier(ProjectionBean.class)
                 .stream()
                 .forEach(bean -> {
-                    final var name = bean.getQualifier(DotName.createSimple(Projection.Named.class))
+                    final var context = Context.from(bean.getQualifier(DotName.createSimple(AggregateContext.class))
+                            .get()
+                            .value()
+                            .asString());
+                    final var name = bean.getQualifier(DotName.createSimple(ProjectionName.class))
                             .get()
                             .value()
                             .asString();
-
-                    final var eventMatchers = bean.getQualifiers().stream()
-                            .filter(qualifier -> qualifier.name().equals(DotName.createSimple(EventMatcher.class)))
-                            .map(annotation -> SelectorFactory.valueOf(annotation.value(EventMatcher.FACTORY).asEnum())
-                                    .create(annotation.value(EventMatcher.PARAMETER).asString()))
-                            .toArray(Selector[]::new);
-                    final var eventMatcher = Selector.all(eventMatchers);
-                    final var aggregationStrategy = bean.getQualifier(DotName.createSimple(Events.Dispatch.class))
-                            .map(annotation -> DispatchStrategy.valueOf(annotation.value().asEnum()))
-                            .orElse(DispatchStrategy.defaultType());
-
-
                     final var metadata = new ProjectionMetadata(
                             name,
-                            aggregationStrategy,
-                            bean.getBeanClass().toString(),
-                            eventMatcher
+                            context
+                    );
+
+                    final var buildInfo = new ProjectionBuildInfo(
+                            metadata,
+                            bean.getBeanClass().toString()
                     );
 
                     beanDiscovery.beanStream()
                             .withBeanType(ExtensionFactory.class)
-                            .forEach(extensionFactoryBean -> {
-                                syntheticBeans.produce(configure(ProjectionExtension.class, metadata)
-                                        .named(String.format(
-                                                "extension-%s-%s",
-                                                extensionFactoryBean.getBeanClass().toString(),
-                                                metadata.getName()
-                                        ))
-                                        .scope(ApplicationScoped.class)
-                                        .forceApplicationClass()
-                                        .createWith(extensionRecorder.record(metadata, extensionFactoryBean.getBeanClass().toString()))
-                                        .done());
-                            });
-
-
-                    syntheticBeans.produce(createProjectionMetadata(metadata, metadataRecorder));
-                    syntheticBeans.produce(createProjectorGateway(metadata, gatewayRecorder));
-                    syntheticBeans.produce(createProjectionTargetFactory(bean, metadata, projectionTargetFactoryRecorder));
+                            .forEach(extensionFactoryBean -> syntheticBeans.produce(
+                                    configure(ProjectionExtension.class, buildInfo)
+                                            .named(String.format(
+                                                    "extension-%s-%s",
+                                                    extensionFactoryBean.getBeanClass().toString(),
+                                                    metadata.getName()
+                                            ))
+                                            .scope(ApplicationScoped.class)
+                                            .forceApplicationClass()
+                                            .createWith(extensionRecorder.record(
+                                                    metadata,
+                                                    extensionFactoryBean.getBeanClass().toString()
+                                            ))
+                                            .done()));
+                    syntheticBeans.produce(createProjectionMetadata(buildInfo, metadataRecorder));
+                    syntheticBeans.produce(createAggregateContext(buildInfo, metadataRecorder));
+                    syntheticBeans.produce(createProjectorGateway(buildInfo, gatewayRecorder));
+                    syntheticBeans.produce(createProjectionTargetFactory(bean, buildInfo, projectionTargetFactoryRecorder));
                 });
     }
 
     private SyntheticBeanBuildItem createProjectionTargetFactory(
             final BeanInfo bean,
-            final ProjectionMetadata metadata,
-            final ProjectionTargetFactory.BeanRecorder recorder
+            final ProjectionBuildInfo metadata,
+            final AggregateHydratorFactory.BeanRecorder recorder
     ) {
         final var middlewares = bean.getQualifiers()
                 .stream()
-                .filter(instance -> instance.name().equals((DotName.createSimple(Apply.class))))
+                .filter(instance -> instance.name().equals((DotName.createSimple(Use.class))))
                 .map(instance -> instance.value().asClass().name().toString())
                 .toArray(String[]::new);
-        return configure(ProjectionTargetFactory.class, metadata)
+        return configure(AggregateHydratorFactory.class, metadata)
                 .scope(ApplicationScoped.class)
                 .forceApplicationClass()
-                .createWith(recorder.record(metadata, middlewares))
+                .createWith(recorder.record(metadata.getMetadata().getContext(), metadata.getTypeName(), middlewares))
                 .done();
     }
 
     SyntheticBeanBuildItem.ExtendedBeanConfigurator configure(
             final Class<?> implClazz,
-            final ProjectionMetadata metadata
+            final ProjectionBuildInfo metadata
     ) {
         return SyntheticBeanBuildItem.configure(implClazz)
                 .scope(Dependent.class)
-                .addQualifier(
-                        AnnotationInstance.builder(Projection.Any.class).build()
+                .addQualifier(AnnotationInstance.builder(ProjectionCompanion.class).build())
+                .addQualifier(AnnotationInstance.builder(AggregateCompanion.class).build())
+                .addQualifier(AnnotationInstance.builder(ProjectionName.class)
+                        .value(metadata.getMetadata().getName())
+                        .build()
                 )
-                .addQualifier(
-                        AnnotationInstance.builder(Projection.Named.class)
-                                .value(metadata.getName())
-                                .build()
-                )
-                .addQualifier(
-                        AnnotationInstance.builder(Projection.Named.class)
-                                .value(UuidGenerator.INSTANCE.generate(EVENT_LOG_ID_NAMESPACE, metadata.getName()).toString())
-                                .build()
-                )
-                .addQualifier(
-                        AnnotationInstance.builder(Projection.Named.class)
-                                .value(metadata.getTargetClass())
-                                .build()
-                )
-                .addQualifier(
-                        AnnotationInstance.builder(com.getlipa.eventstore.core.projection.cdi.ProjectionTarget.Typed.class)
-                                .value(metadata.getTargetClass())
-                                .build()
+                .addQualifier(AnnotationInstance.builder(AggregateType.class)
+                        .value(metadata.getTypeName())
+                        .build()
                 );
     }
 
     private SyntheticBeanBuildItem createProjectionMetadata(
-            final ProjectionMetadata metadata,
+            final ProjectionBuildInfo metadata,
             final ProjectionMetadata.BeanRecorder recorder
     ) {
         return configure(ProjectionMetadata.class, metadata)
                 .scope(ApplicationScoped.class)
-                .named(String.format("projection-metadata:%s", metadata.getName()))
+                .named(String.format("projection-metadata:%s", metadata.getMetadata().getName()))
                 .forceApplicationClass()
-                .createWith(recorder.record(metadata))
+                .createWith(recorder.record(metadata.getMetadata()))
+                .done();
+    }
+
+    private SyntheticBeanBuildItem createAggregateContext(
+            final ProjectionBuildInfo metadata,
+            final ProjectionMetadata.BeanRecorder recorder
+    ) {
+        return configure(metadata.getMetadata().getContext().getClass(), metadata)
+                .scope(ApplicationScoped.class)
+                .named(String.format("aggregate-context:%s", metadata.getMetadata().getName()))
+                .forceApplicationClass()
+                .createWith(recorder.record(metadata.getMetadata().getContext()))
                 .done();
     }
 
     private SyntheticBeanBuildItem createProjectorGateway(
-            final ProjectionMetadata metadata,
-            final ProjectorGateway.BeanRecorder recorder
+            final ProjectionBuildInfo metadata,
+            final Projector.BeanRecorder recorder
     ) {
-        return configure(ProjectorGateway.class, metadata)
+        return configure(Projector.class, metadata)
                 .scope(ApplicationScoped.class)
-                .named(String.format("projector-gateway:%s", metadata.getName()))
+                .named(String.format("projector-gateway:%s", metadata.getMetadata().getName()))
                 .forceApplicationClass()
-                .createWith(recorder.record(metadata))
+                .createWith(recorder.record(metadata.getMetadata()))
                 .done();
     }
-
-    @BuildStep
-    AnnotationsTransformerBuildItem addLogIdMatcherAnnotation() {
-        return addEventMatcherAnnotation(Events.WithLogId.class, SelectorFactory.WITH_LOG_ID);
-    }
-
-    @BuildStep
-    AnnotationsTransformerBuildItem addCorrelationIdMatcherAnnotation() {
-        return addEventMatcherAnnotation(Events.WithCorrelationId.class, SelectorFactory.WITH_CORRELATION_ID);
-    }
-
-    @BuildStep
-    AnnotationsTransformerBuildItem addCausationIdMatcherAnnotation() {
-        return addEventMatcherAnnotation(Events.WithCausationId.class, SelectorFactory.WITH_CAUSATION_ID);
-    }
-
-    @BuildStep
-    AnnotationsTransformerBuildItem addLogDomainMatcherAnnotation() {
-        return addEventMatcherAnnotation(Events.WithLogDomain.class, SelectorFactory.WITH_LOG_DOMAIN);
-    }
-
-    @BuildStep
-    AnnotationsTransformerBuildItem addTypeMatcherAnnotation() {
-        return addEventMatcherAnnotation(Events.WithType.class, SelectorFactory.WITH_TYPE);
-    }
-
-    AnnotationsTransformerBuildItem addEventMatcherAnnotation(
-            final Class<? extends Annotation> annotation,
-            final SelectorFactory selectorFactory
-    ) {
-        return new AnnotationsTransformerBuildItem(AnnotationsTransformer.appliedToClass()
-                .whenClass(c -> c.hasAnnotation(annotation))
-                .transform(c -> {
-                            final var parameter = c.getTarget()
-                                    .annotation(annotation)
-                                    .value()
-                                    .asString();
-                            c.transform()
-                                    .add(
-                                            EventMatcher.class,
-                                            AnnotationValue.createEnumValue("factory", DotName.createSimple(SelectorFactory.class), selectorFactory.name()),
-                                            AnnotationValue.createStringValue("parameter", parameter)
-                                    )
-                                    .done();
-                        }
-                ));
-    }
-
 
     @BuildStep
     AnnotationsTransformerBuildItem addProjectionAnnotations(BeanArchiveIndexBuildItem beanArchiveIndexBuildItem) {
@@ -220,20 +166,26 @@ class ProjectionProcessor {
                 .whenClass(c -> c.hasAnnotation(Projection.class))
                 .transform(c -> {
                             final var annotation = c.getTarget().annotation(Projection.class);
+                            final var aggregateType = c.getTarget().asClass().toString();
                             final var name = annotation.value("name").asString();
+                            final var context = annotation.valueWithDefault(
+                                    beanArchiveIndexBuildItem.getIndex(),
+                                    "context"
+                            ).asString();
                             log.info(
                                     "Detected @{} bean: {} / {}",
                                     Projection.class.getSimpleName(),
-                                    c.getTarget().toString(),
+                                    aggregateType,
                                     name
                             );
-
                             c.transform()
-                                    .add(com.getlipa.eventstore.core.projection.cdi.ProjectionTarget.Any.class)
-                                    .add(
-                                            Projection.Named.class,
-                                            AnnotationValue.createStringValue("value", name)
-                                    )
+                                    .add(ProjectionName.class, AnnotationValue.createStringValue("value", name))
+                                    .add(Dependent.class)
+                                    //.add(ProjectorScoped.class)
+                                    .add(ProjectionBean.class)
+                                    .add(AggregateBean.class)
+                                    .add(AggregateType.class, AnnotationValue.createStringValue("value", aggregateType))
+                                    .add(AggregateContext.class, AnnotationValue.createStringValue("value", context))
                                     .done();
                         }
                 ));

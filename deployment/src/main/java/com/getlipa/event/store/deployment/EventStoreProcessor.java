@@ -1,9 +1,9 @@
 package com.getlipa.event.store.deployment;
 
-import com.getlipa.eventstore.core.projection.projector.CodecRecorder;
-import com.getlipa.eventstore.core.projection.trgt.ProjectionTarget;
-import com.getlipa.eventstore.core.proto.PayloadClassRecorder;
-import com.getlipa.eventstore.example.event.Example;
+import com.getlipa.eventstore.Jobs;
+import com.getlipa.eventstore.Mutex;
+import com.getlipa.eventstore.projection.projector.EventCodec;
+import com.getlipa.eventstore.event.payload.PayloadDeserializer;
 import com.getlipa.eventstore.subscriptions.Projections;
 import com.google.protobuf.Message;
 import io.quarkus.arc.deployment.*;
@@ -17,9 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import static io.quarkus.deployment.annotations.ExecutionTime.STATIC_INIT;
 
-import com.getlipa.eventstore.core.persistence.postgres.JpaEvent;
-import com.getlipa.eventstore.core.persistence.postgres.PostgresEventPersistence;
-import com.getlipa.eventstore.core.proto.PayloadParser;
+import com.getlipa.eventstore.persistence.postgres.JpaEvent;
+import com.getlipa.eventstore.persistence.postgres.PostgresEventPersistence;
 import io.quarkus.deployment.annotations.Consume;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -46,7 +45,7 @@ class EventStoreProcessor {
     public void recordApplicationPayloadParsers(
             ApplicationIndexBuildItem applicationIndexBuildItem,
             BuildProducer<BeanContainerListenerBuildItem> containerListenerProducer,
-            PayloadClassRecorder recorder
+            PayloadDeserializer.PayloadClassRecorder recorder
     ) {
         final var classLoader = Thread.currentThread().getContextClassLoader();
         for (final var classInfo : applicationIndexBuildItem.getIndex().getKnownClasses()) {
@@ -60,7 +59,7 @@ class EventStoreProcessor {
             if (!Message.class.isAssignableFrom(clazz)) {
                 continue;
             }
-            containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(clazz)));
+            containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record((Class<? extends Message>) clazz)));
         }
     }
 
@@ -68,24 +67,30 @@ class EventStoreProcessor {
     @BuildStep
     public void recordInternalPayloadParsers(
             BuildProducer<BeanContainerListenerBuildItem> containerListenerProducer,
-            PayloadClassRecorder recorder
+            PayloadDeserializer.PayloadClassRecorder recorder
     ) {
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.Event.class)));
-        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Simple.class)));
-        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Other.class)));
+        //containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Simple.class)));
+        //containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Example.Other.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.CatchUpStarted.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.CatchUpCompleted.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.CheckpointReached.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.IntermediateCheckpointReached.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.ListeningStarted.class)));
         containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Projections.ListeningStopped.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Jobs.JobStarted.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Jobs.JobCompleted.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Jobs.JobFailed.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Jobs.CheckpointReached.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Mutex.LockAcquired.class)));
+        containerListenerProducer.produce(new BeanContainerListenerBuildItem(recorder.record(Mutex.LockReleased.class)));
     }
 
     @Consume(SyntheticBeansRuntimeInitBuildItem.class)
     @Record(RUNTIME_INIT)
     @BuildStep
     public void registerVertxCodecs(
-            CodecRecorder codecRecorder
+            EventCodec.CodecRecorder codecRecorder
 
     ) {
         codecRecorder.registerCodecs();
@@ -94,10 +99,9 @@ class EventStoreProcessor {
     @BuildStep
     AdditionalBeanBuildItem additionalBeans() {
         return AdditionalBeanBuildItem.builder()
-                .addBeanClass(PayloadParser.class)
+                .addBeanClass(PayloadDeserializer.class)
                 .addBeanClass(PostgresEventPersistence.class)
                 .addBeanClass(JpaEvent.class)
-                .addBeanClass(ProjectionTarget.Producer.class)
                 .setUnremovable()
                 .build();
     }

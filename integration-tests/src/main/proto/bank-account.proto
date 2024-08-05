@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package bankaccount.event;
+
+option java_package = "com.getlipa.eventstore.it";
+
+message AccountOpened {
+}
+
+message AccountClosed {
+}
+
+message FundsDeposited {
+  double amount = 1;
+}
+
+message FundsWithdrawn {
+  double amount = 1;
+}

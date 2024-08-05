@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package job;
+
+option java_package = "com.getlipa.eventstore";
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+/*
+
+Job.* events have the follwoing semantics:
+causationId: projection.id
+correlationId: Id.of("projection")
+logId: job.id
+
+ */
+
+message JobStarted {
+  int64 checkpoint = 1;
+  int32 checkpointIntervalMs = 2;
+}
+
+message JobFailed {
+  string reason = 1;
+}
+
+message JobCompleted {
+  int64 checkpoint = 1;
+}
+
+message CheckpointReached {
+  int64 checkpoint = 1;
+}
