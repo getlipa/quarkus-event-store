@@ -1,5 +1,5 @@
 jdk:
   - openjdk11
 before_install:
-  - sdk install java 11.0.20-amzn
-  - sdk use java 11.0.20-amzn
+  - sdk install java 22.3.1.r19-grl
+  - sdk use java 22.3.1.r19-grl
