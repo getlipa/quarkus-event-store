@@ -97,14 +97,14 @@ class EventStoreTest {
         final var stream = Events.byLog("context", Id.random());
         final var first = Event.withCausationId(Id.numeric(0))
                 .withPayload(Example.Simple.newBuilder()
-                .setData("first")
-                .build());
+                        .setData("first")
+                        .build());
         final var firstAppended = append(stream, LogIndex.atAny(), first);
         final var second = Event.withCausationId(Id.numeric(1))
                 .withId(first.getId())
                 .withPayload(Example.Simple.newBuilder()
-                .setData("second")
-                .build());
+                        .setData("second")
+                        .build());
         final var secondAppended = append(stream, LogIndex.atAny(), second);
         assertEquals(first.getCausationId(), secondAppended.getCausationId());
         assertEquals(firstAppended, secondAppended);
@@ -142,7 +142,7 @@ class EventStoreTest {
             append(Events.byLog("a", id(0)));
             append(Events.byLog("b", id(1)), event -> event.withCorrelationId(id(5)));
             append(Events.byLog("b", id(1)), event -> event.withCausationId(id(5)));
-            append(Events.byLog("c", id(0)), event -> event.withCorrelationId(id(5)));
+            append(Events.byLog("c", id(0)), LogIndex.first(), event -> event.withCorrelationId(id(5)), Example.Other.newBuilder().build());
             append(Events.byLog("c", id(1)), event -> event.withCausationId(id(5)));
             for (var i = 0; i < 2000; i++) {
                 append(Events.byLog("d", id(7)));
@@ -179,6 +179,40 @@ class EventStoreTest {
                     .toCompletableFuture()
                     .join();
             assertEquals(expected, stringBuilder.toString().trim());
+        }
+
+        Stream<Arguments> testReadFirst() {
+            return Stream.of(
+                    test(Events.all(), ReadOptions.builder(), Example.Simple.class, 1L),
+                    test(Events.all(), ReadOptions.builder().from(Cursor.position(5L)), Example.Simple.class, 6L),
+                    test(Events.all(), ReadOptions.builder(), Example.Other.class, 5L)
+            );
+        }
+
+        @MethodSource
+        @ParameterizedTest
+        public <T extends Message> void testReadFirst(Selector selector, ReadOptions.ReadOptionsBuilder readOptions, Class<T> clazz, long expectedPosition) {
+            var result = eventStore.stream(selector)
+                    .read(readOptions)
+                    .first(clazz)
+                    .toCompletionStage()
+                    .toCompletableFuture()
+                    .join();
+
+            assertEquals(result.get().get().getClass(), clazz);
+            assertEquals(result.get().getPosition(), expectedPosition);
+        }
+
+        @Test
+        public void testReadFirst_EmptyResult() {
+            var result = eventStore.stream(Events.all())
+                    .read(ReadOptions.builder().limit(1))
+                    .first(Example.Other.class)
+                    .toCompletionStage()
+                    .toCompletableFuture()
+                    .join();
+
+            assertTrue(result.isEmpty());
         }
 
         @Test
@@ -344,6 +378,15 @@ class EventStoreTest {
             final String expected
     ) {
         return Arguments.of(selector, readOptionsBuilder, expected);
+    }
+
+    static <T extends Message> Arguments test(
+            final Selector selector,
+            final ReadOptions.ReadOptionsBuilder readOptionsBuilder,
+            final Class<T> clazz,
+            final long expectedPosition
+    ) {
+        return Arguments.of(selector, readOptionsBuilder, clazz, expectedPosition);
     }
 
     static Arguments test(Function<EventStore, EventReader> readerProvider, String expected) {
