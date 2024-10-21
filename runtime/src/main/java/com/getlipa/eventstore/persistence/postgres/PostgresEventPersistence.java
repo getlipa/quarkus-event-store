@@ -61,13 +61,13 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
 
     @Override
     public Future<AnyEvent> read(Id id) {
-        return vertx.executeBlocking(result -> result.complete(queryExecutor.find(id)));
+        return vertx.executeBlocking(result -> result.complete(queryExecutor.find(id)), false);
     }
 
     @Override
     public Future<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions) {
         final var query = EventQuery.create(selector, readOptions);
 
-        return vertx.executeBlocking(result -> result.complete(queryExecutor.execute(query).iterator()));
+        return vertx.executeBlocking(result -> result.complete(queryExecutor.execute(query).iterator()), false);
     }
 }
