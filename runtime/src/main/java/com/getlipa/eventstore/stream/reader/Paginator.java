@@ -78,7 +78,7 @@ public class Paginator {
     void emitEvents(MultiEmitter<? super AnyEvent> emitter) {
         final var currentPosition = new AtomicReference<>(readOptions.from());
         final var numOfProcessedEvents = new AtomicInteger(0);
-        Vertx.vertx().executeBlocking(() -> {
+        vertx.executeBlocking(() -> {
                     Future<Cursor> currentPage = null;
                     while (!emitter.isCancelled()) {
                         if (currentPage != null && !currentPage.isComplete()) {
