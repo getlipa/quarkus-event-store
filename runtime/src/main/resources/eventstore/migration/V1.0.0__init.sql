@@ -38,7 +38,7 @@ BEGIN
   RETURNING event_log_index_sequence."currentValue" INTO "expectedIndex";
 
   -- NOTE: it's important to set position here as otherwise,
-  -- position order may not equal logIndex order within the same series
+  -- position order may not equal logIndex order within the same log
   NEW."position" := nextval('event_position_seq');
 
   -- -1 -> AnyIndex: Insert at the next index
