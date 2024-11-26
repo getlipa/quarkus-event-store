@@ -46,8 +46,12 @@ BEGIN
   IF NEW."logIndex" = -1 OR (NEW."logIndex" = -2 AND "expectedIndex" > 0) THEN
     NEW."logIndex" := "expectedIndex";
   ELSIF NEW."logIndex" != "expectedIndex" THEN
-    -- NOTE: the message format is important, as Hibernate depends on it to determine the constraint name
+    -- NOTE: the exception message format is important, as Hibernate depends on it to determine the constraint name
     -- (see: https://github.com/hibernate/hibernate-orm/blob/bc901f516265b0ee6ded0419f083d2c184662c6f/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java#L960)
+    IF EXISTS (SELECT 1 FROM event WHERE "uuid" = NEW."uuid") THEN
+        RAISE EXCEPTION 'uuid "%" violates unique constraint "event_id_unique"',
+        NEW."uuid" USING ERRCODE = 'unique_violation';
+    END IF;
     RAISE EXCEPTION 'logIndex "%" violates check constraint "consecutive_log_index"',
     NEW."logIndex" USING ERRCODE = 'check_violation';
   END IF;

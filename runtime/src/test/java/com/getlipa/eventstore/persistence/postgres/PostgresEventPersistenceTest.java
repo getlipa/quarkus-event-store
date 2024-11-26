@@ -103,6 +103,25 @@ class PostgresEventPersistenceTest {
     }
 
     @Test
+    public void testReAppendFirst() throws EventAppendException {
+        final var stream = Events.byLog("domain", Id.random());
+        final var first = Event.withPayload(Example.Simple.newBuilder()
+                .setData("first")
+                .build());
+        persistence.append(stream, LogIndex.first(), first)
+                .toCompletionStage()
+                .toCompletableFuture()
+                .join();
+        final var second = Event.withId(first.getId()).withPayload(Example.Simple.newBuilder()
+                .setData("second")
+                .build());
+        Assertions.assertThrows(
+                DuplicateEventException.class,
+                () -> persistence.appendBlocking(stream, LogIndex.first(), second)
+        );
+    }
+
+    @Test
     public void testConflictingAppend() throws EventAppendException {
         final var stream = Events.byLog("domain", Id.random());
         final var first = Event.withPayload(Example.Simple.newBuilder()
