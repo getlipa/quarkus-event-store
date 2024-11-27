@@ -39,15 +39,7 @@ public class AppendableStream extends Stream {
     }
 
     public <T extends Message> Future<AnyEvent> append(final LogIndex logIndex, final EphemeralEvent<T> ephemeralEvent) {
-        // TODO: only notify subscriptions when event was actually appended (ignore re-appends of the same event)
         return eventPersistence.append(byLogSelector, logIndex, ephemeralEvent)
-                .recover(error -> {
-                    // FIXME
-                    if (error instanceof DuplicateEventException) {
-                        return eventPersistence.read(ephemeralEvent.getId());
-                    }
-                    return Future.failedFuture(error);
-                })
                 .onSuccess(event -> events.fireAsync(EventStore.EventAppended.create(event))
                         .exceptionally(throwable -> {
                             log.error(
@@ -57,7 +49,13 @@ public class AppendableStream extends Stream {
                             );
                             return null;
                         })
-                );
+                )
+                .recover(error -> {
+                    if (error instanceof DuplicateEventException) {
+                        return eventPersistence.read(ephemeralEvent.getId());
+                    }
+                    return Future.failedFuture(error);
+                });
     }
 
     public <T extends Message> Appender append(Future<LogIndex> logIndex) {

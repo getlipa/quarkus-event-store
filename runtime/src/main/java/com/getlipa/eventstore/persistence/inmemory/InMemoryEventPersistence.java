@@ -9,6 +9,7 @@ import com.getlipa.eventstore.event.logindex.LogIndex;
 import com.getlipa.eventstore.event.selector.ByLogSelector;
 import com.getlipa.eventstore.event.selector.Selector;
 import com.getlipa.eventstore.persistence.EventPersistence;
+import com.getlipa.eventstore.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
@@ -26,7 +27,7 @@ public class InMemoryEventPersistence implements EventPersistence {
     public <T extends Message> Future<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<T> event) {
         final var existingEvent = findById(event.getId());
         if (existingEvent != null) {
-            return Future.succeededFuture(existingEvent);
+            return Future.failedFuture(EventAppendException.duplicateEvent());
         }
         final var index = indexByLog.getOrDefault(selector, -1) + 1;
         try {

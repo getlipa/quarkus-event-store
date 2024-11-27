@@ -16,8 +16,12 @@ public class EventAppendException extends Exception {
         super(message, cause);
     }
 
-    public static DuplicateEventException duplicateEvent(Throwable violationException) {
-        return new DuplicateEventException(violationException);
+    public static DuplicateEventException duplicateEvent() {
+        return EventAppendException.duplicateEvent(null);
+    }
+
+    public static DuplicateEventException duplicateEvent(Throwable cause) {
+        return new DuplicateEventException(cause);
     }
 
     public static EventAppendException because(String message) {
