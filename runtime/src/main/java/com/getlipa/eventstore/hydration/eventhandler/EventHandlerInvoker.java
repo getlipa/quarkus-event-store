@@ -75,9 +75,9 @@ public class EventHandlerInvoker {
         try {
             result = handler.invoke(bean, event);
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
+            return Future.failedFuture(e);
         } catch (InvocationTargetException e) {
-            throw new IllegalStateException(String.format(
+            return Future.failedFuture(String.format(
                     "An exception occurred when invoking the event handler: %s - %s",
                     e.getTargetException().getClass().getSimpleName(),
                     e.getTargetException().getMessage()
