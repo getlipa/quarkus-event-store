@@ -50,12 +50,14 @@ class EventStoreTest {
     @Inject
     PostgresEventPersistence postgresEventPersistence;
 
+    jakarta.enterprise.event.Event<EventStore.EventAppended> observer;
+
     @BeforeAll
     @SuppressWarnings("unchecked")
     public void setup() {
         persistence = spy(new InMemoryEventPersistence());
         //persistence = spy(postgresEventPersistence);
-        final var observer = mock(jakarta.enterprise.event.Event.class);
+        observer = mock(jakarta.enterprise.event.Event.class);
         doReturn(Future.succeededFuture().toCompletionStage()).when(observer).fireAsync(any());
         eventStore = new EventStore(Vertx.vertx(), persistence, observer);
         PayloadDeserializer.register(Example.Simple.getDescriptor(), Example.Simple.parser());
@@ -75,6 +77,8 @@ class EventStoreTest {
         assertTrue(0 < first.getPosition());
         assertTrue(first.getPosition() < second.getPosition());
         assertTrue(second.getPosition() < third.getPosition());
+
+        verify(observer, times(3)).fireAsync(any());
     }
 
     @Test
@@ -108,6 +112,8 @@ class EventStoreTest {
         final var secondAppended = append(stream, LogIndex.atAny(), second);
         assertEquals(first.getCausationId(), secondAppended.getCausationId());
         assertEquals(firstAppended, secondAppended);
+
+        verify(observer, times(1)).fireAsync(any());
     }
 
     @Test
