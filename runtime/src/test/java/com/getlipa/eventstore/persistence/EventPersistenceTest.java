@@ -8,6 +8,7 @@ import com.getlipa.eventstore.event.Events;
 import com.getlipa.eventstore.event.logindex.LogIndex;
 import com.getlipa.eventstore.event.selector.ByLogSelector;
 import com.getlipa.eventstore.event.selector.Selector;
+import com.getlipa.eventstore.persistence.exception.DuplicateEventException;
 import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.persistence.inmemory.InMemoryEventPersistence;
 import com.getlipa.eventstore.stream.reader.cursor.Cursor;
@@ -77,8 +78,7 @@ class EventPersistenceTest {
         final var second = Event.withId(first.getId()).withPayload(Example.Simple.newBuilder()
                 .setData("second")
                 .build());
-        final var secondAppended = append(stream, LogIndex.atAny(), second);
-        Assertions.assertSame(firstAppended, secondAppended);
+        Assertions.assertThrows(DuplicateEventException.class, () -> append(stream, LogIndex.atAny(), second));
     }
 
     @Test
