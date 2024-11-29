@@ -54,13 +54,19 @@ class EventStoreTest {
 
     @BeforeAll
     @SuppressWarnings("unchecked")
-    public void setup() {
+    public void setupAll() {
         persistence = spy(new InMemoryEventPersistence());
         //persistence = spy(postgresEventPersistence);
         observer = mock(jakarta.enterprise.event.Event.class);
-        doReturn(Future.succeededFuture().toCompletionStage()).when(observer).fireAsync(any());
         eventStore = new EventStore(Vertx.vertx(), persistence, observer);
         PayloadDeserializer.register(Example.Simple.getDescriptor(), Example.Simple.parser());
+    }
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    public void setup() {
+        reset(observer);
+        doReturn(Future.succeededFuture().toCompletionStage()).when(observer).fireAsync(any());
     }
 
     @Test
