@@ -101,7 +101,7 @@ public class Paginator {
                                 .onFailure(emitter::fail);
                     }
                     return new Void[]{};
-                })
+                }, false)
                 .onFailure(emitter::fail)
                 .onSuccess(result -> emitter.complete());
     }

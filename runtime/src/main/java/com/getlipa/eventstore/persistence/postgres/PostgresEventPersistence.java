@@ -12,6 +12,7 @@ import com.getlipa.eventstore.persistence.postgres.query.QueryExecutor;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.RollbackException;
@@ -67,7 +68,11 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     @Override
     public Future<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions) {
         final var query = EventQuery.create(selector, readOptions);
-
-        return vertx.executeBlocking(result -> result.complete(queryExecutor.execute(query).iterator()), false);
+        final var result = Promise.<Iterator<AnyEvent>>promise();
+        vertx.executeBlocking(() -> {
+            result.complete(queryExecutor.execute(query).iterator());
+            return new Void[]{};
+        }, false);
+        return result.future();
     }
 }
