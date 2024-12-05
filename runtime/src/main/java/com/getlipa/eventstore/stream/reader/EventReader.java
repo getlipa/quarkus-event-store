@@ -2,13 +2,12 @@ package com.getlipa.eventstore.stream.reader;
 
 import com.getlipa.eventstore.event.AnyEvent;
 import com.getlipa.eventstore.event.Event;
-import com.getlipa.eventstore.event.Events;
 import com.getlipa.eventstore.event.selector.Selector;
-import com.getlipa.eventstore.identifier.Id;
 import com.getlipa.eventstore.stream.reader.cursor.Cursor;
 import com.getlipa.eventstore.persistence.EventPersistence;
 import com.google.protobuf.Message;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -22,8 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public class EventReader {
-
-    private final Vertx vertx;
 
     private final Selector selector;
 
@@ -54,18 +51,25 @@ public class EventReader {
     public <T> Future<T> aggregate(T initialValue, AnyEvent.Aggregator<T> handler) {
         final var options = optionsBuilder.build();
         final var aggregate = new AtomicReference<>(initialValue);
-        return Paginator.create(vertx, eventPersistence, selector, options)
+        final var promise = Promise.<Long>promise();
+        Paginator.create(eventPersistence, selector, options)
                 .forEach(event -> handler.aggregate(aggregate.get(), event)
                         .onSuccess(aggregate::set)
                         .mapEmpty()
                 )
-                .map(result -> aggregate.get());
+                .subscribe()
+                .with(promise::complete, promise::fail);
+        return promise.future().map(result -> aggregate.get());
     }
 
     public <T> Future<Long> forEach(AnyEvent.Handler<T> handler) {
         final var options = optionsBuilder.build();
-        return Paginator.create(vertx, eventPersistence, selector, options)
-                .forEach(handler);
+        final var promise = Promise.<Long>promise();
+        Paginator.create(eventPersistence, selector, options)
+                .forEach(handler)
+                .subscribe()
+                .with(promise::complete, promise::fail);
+        return promise.future();
     }
 
     public <T extends Message> Future<Optional<Event<T>>> first(Class<T> clazz) {

@@ -28,12 +28,11 @@ public class AppendableStream extends Stream {
     private final Event<EventStore.EventAppended> events;
 
     public AppendableStream(
-            final Vertx vertx,
             final ByLogSelector selector,
             final EventPersistence eventPersistence,
             final Event<EventStore.EventAppended> events
     ) {
-        super(vertx, selector, eventPersistence);
+        super(selector, eventPersistence);
         this.byLogSelector = selector;
         this.events = events;
     }
