@@ -13,6 +13,7 @@ import com.getlipa.eventstore.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Uni;
 import io.vertx.core.Future;
 
 import java.util.*;
@@ -24,16 +25,16 @@ public class InMemoryEventPersistence implements EventPersistence {
     private final Map<ByLogSelector, Integer> indexByLog = new HashMap<>();
 
     @Override
-    public <T extends Message> Future<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<T> event) {
+    public <T extends Message> Uni<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<T> event) {
         final var existingEvent = findById(event.getId());
         if (existingEvent != null) {
-            return Future.failedFuture(EventAppendException.duplicateEvent());
+            return Uni.createFrom().failure(EventAppendException.duplicateEvent());
         }
         final var index = indexByLog.getOrDefault(selector, -1) + 1;
         try {
             logIndex.validate(index);
         } catch (InvalidIndexException e) {
-            return Future.failedFuture(e);
+            return Uni.createFrom().failure(e);
         }
         indexByLog.put(selector, index);
         final var persisted = Event.from(InMemoryEvent.from(
@@ -44,11 +45,11 @@ public class InMemoryEventPersistence implements EventPersistence {
                 event
         )).withPayload(event.getPayload());
         events.add(persisted);
-        return Future.succeededFuture(persisted);
+        return Uni.createFrom().item(persisted);
     }
 
     @Override
-    public Future<Iterator<AnyEvent>> read(Selector selector, ReadOptions readOptions) {
+    public Uni<Iterator<AnyEvent>> read(Selector selector, ReadOptions readOptions) {
         final var result = new LinkedList<AnyEvent>();
         final var queue = new LinkedList<>(events);
         queue.sort(Comparator.comparing(EventMetadata::getPosition, readOptions.direction().getPositionComparator()));
@@ -61,16 +62,16 @@ public class InMemoryEventPersistence implements EventPersistence {
             }
             result.add(event);
         }
-        return Future.succeededFuture(result.iterator());
+        return Uni.createFrom().item(result.iterator());
     }
 
     @Override
-    public Future<AnyEvent> read(Id id) {
+    public Uni<AnyEvent> read(Id id) {
         final var event = findById(id);
         if (event != null) {
-            return Future.succeededFuture(event);
+            return Uni.createFrom().item(event);
         }
-        return Future.failedFuture("No such event.");
+        return Uni.createFrom().failure(new NoSuchElementException("No such event."));
     }
 
     AnyEvent findById(Id id) {

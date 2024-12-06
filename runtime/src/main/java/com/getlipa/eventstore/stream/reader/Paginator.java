@@ -58,24 +58,22 @@ public class Paginator {
 
     Uni<Page> nextPage(final Page currentPage) {
         if (currentPage == null) {
-            return Uni.createFrom().completionStage(eventPersistence.read(selector, ReadOptions.from(readOptions)
+            return eventPersistence.read(selector, ReadOptions.from(readOptions)
                             .limit(Integer.min(readOptions.limit(), readOptions.pageSize()))
                             .build())
-                    .map(iterator -> Page.first(readOptions, iterator))
-                    .toCompletionStage());
+                    .onItem().transform(iterator -> Page.first(readOptions, iterator));
         }
         if (currentPage.remainingTotalLimit <= 0) {
             return Uni.createFrom().item(Page.empty());
         }
-        return Uni.createFrom().completionStage(eventPersistence.read(
+        return eventPersistence.read(
                         selector,
                         ReadOptions.from(readOptions)
                                 .from(currentPage.cursor())
                                 .limit(Integer.min((int) currentPage.remainingTotalLimit, readOptions.pageSize()) + 1)
                                 .build()
                 )
-                .map(currentPage::createNext)
-                .toCompletionStage());
+                .onItem().transform(currentPage::createNext);
     }
 
     @RequiredArgsConstructor

@@ -60,10 +60,7 @@ class EventPersistenceTest {
         final var event = Example.Simple.newBuilder()
                 .setData("some-data")
                 .build();
-        final var first = persistence.append(stream, LogIndex.atAny(), Event.withPayload(event))
-                .toCompletionStage()
-                .toCompletableFuture()
-                .join();
+        final var first = persistence.append(stream, LogIndex.atAny(), Event.withPayload(event)).await().indefinitely();
 
         Assertions.assertEquals(0, first.getLogIndex());
     }
@@ -87,10 +84,7 @@ class EventPersistenceTest {
         final var first = Event.withPayload(Example.Simple.newBuilder()
                 .setData("first")
                 .build());
-        persistence.append(stream, LogIndex.first(), first)
-                .toCompletionStage()
-                .toCompletableFuture()
-                .join();
+        persistence.append(stream, LogIndex.first(), first).await().indefinitely();
         final var replayed = Event.withPayload(Example.Simple.newBuilder()
                 .setData("second")
                 .build());
@@ -125,7 +119,7 @@ class EventPersistenceTest {
         append(Events.byLog("c", id(1)), event -> event.withCausationId(id(5)));
 
         final var stringBuilder = new StringBuilder();
-        persistence.read(selector, readOptions).toCompletionStage().toCompletableFuture().join()
+        persistence.read(selector, readOptions).await().indefinitely()
                 .forEachRemaining(event -> stringBuilder.append(String.format(
                         "%s-%s-%s ",
                         event.getLogContext(),
@@ -187,10 +181,7 @@ class EventPersistenceTest {
     ) throws Throwable {
         try {
 
-            return persistence.append(selector, logIndex, event)
-                    .toCompletionStage()
-                    .toCompletableFuture()
-                    .join();
+            return persistence.append(selector, logIndex, event).await().indefinitely();
         } catch (CompletionException e) {
             throw e.getCause();
         }
