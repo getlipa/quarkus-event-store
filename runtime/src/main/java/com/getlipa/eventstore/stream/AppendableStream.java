@@ -9,7 +9,9 @@ import com.getlipa.eventstore.persistence.EventPersistence;
 import com.getlipa.eventstore.persistence.exception.DuplicateEventException;
 import com.getlipa.eventstore.event.selector.ByLogSelector;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Uni;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.event.Event;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.OffsetDateTime;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 @Slf4j
@@ -28,34 +31,36 @@ public class AppendableStream extends Stream {
     private final Event<EventStore.EventAppended> events;
 
     public AppendableStream(
-            final Vertx vertx,
             final ByLogSelector selector,
             final EventPersistence eventPersistence,
             final Event<EventStore.EventAppended> events
     ) {
-        super(vertx, selector, eventPersistence);
+        super(selector, eventPersistence);
         this.byLogSelector = selector;
         this.events = events;
     }
 
     public <T extends Message> Future<AnyEvent> append(final LogIndex logIndex, final EphemeralEvent<T> ephemeralEvent) {
-        return eventPersistence.append(byLogSelector, logIndex, ephemeralEvent)
-                .onSuccess(event -> events.fireAsync(EventStore.EventAppended.create(event))
+        final var result = Promise.<AnyEvent>promise();
+        eventPersistence.append(byLogSelector, logIndex, ephemeralEvent)
+                .onItem().invoke(event -> events.fireAsync(EventStore.EventAppended.create(event))
                         .exceptionally(throwable -> {
-                            log.error(
-                                    "Unable to notify {} observers: {}",
-                                    EventStore.EventAppended.class,
-                                    throwable.toString()
-                            );
-                            return null;
-                        })
-                )
-                .recover(error -> {
+                                    log.error(
+                                            "Unable to notify {} observers: {}",
+                                            EventStore.EventAppended.class,
+                                            throwable.toString()
+                                    );
+                                    return null;
+                                }
+                        ))
+                .onFailure().recoverWithUni(error -> {
                     if (error instanceof DuplicateEventException) {
                         return eventPersistence.read(ephemeralEvent.getId());
                     }
-                    return Future.failedFuture(error);
-                });
+                    return Uni.createFrom().failure(error);
+                })
+                .subscribe().with(result::complete, result::fail);
+        return result.future();
     }
 
     public <T extends Message> Appender append(Future<LogIndex> logIndex) {

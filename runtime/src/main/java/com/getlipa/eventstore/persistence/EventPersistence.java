@@ -8,6 +8,8 @@ import com.getlipa.eventstore.event.selector.Selector;
 import com.getlipa.eventstore.event.logindex.LogIndex;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import io.vertx.core.Future;
 
 import java.util.Iterator;
@@ -15,13 +17,13 @@ import java.util.Iterator;
 public interface EventPersistence {
 
 
-    <T extends Message> Future<AnyEvent> append(
+    <T extends Message> Uni<AnyEvent> append(
             ByLogSelector selector,
             LogIndex logIndex,
             EphemeralEvent<T> event
     );
 
-    Future<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions);
+    Multi<AnyEvent> read(Selector selector, final ReadOptions readOptions);
 
-    Future<AnyEvent> read(Id id);
+    Uni<AnyEvent> read(Id id);
 }

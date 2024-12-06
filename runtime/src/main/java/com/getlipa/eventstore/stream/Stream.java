@@ -11,14 +11,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class Stream {
 
-    private final Vertx vertx;
-
     protected final Selector selector;
 
     protected final EventPersistence eventPersistence;
 
     public EventReader read(final ReadOptions.ReadOptionsBuilder readOptionsBuilder) {
-        return new EventReader(vertx, selector, eventPersistence, readOptionsBuilder);
+        return new EventReader(selector, eventPersistence, readOptionsBuilder);
     }
 
     public EventReader read(Direction direction) {

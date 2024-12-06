@@ -11,7 +11,11 @@ import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.persistence.postgres.query.QueryExecutor;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.RollbackException;
@@ -60,14 +64,16 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     }
 
     @Override
-    public Future<AnyEvent> read(Id id) {
-        return vertx.executeBlocking(result -> result.complete(queryExecutor.find(id)), false);
+    public Uni<AnyEvent> read(Id id) {
+        return Uni.createFrom().item(() -> queryExecutor.find(id))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
     @Override
-    public Future<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions) {
-        final var query = EventQuery.create(selector, readOptions);
-
-        return vertx.executeBlocking(result -> result.complete(queryExecutor.execute(query).iterator()), false);
+    public Multi<AnyEvent> read(Selector selector, final ReadOptions readOptions) {
+        return Multi.createFrom().items(() -> {
+            var query = EventQuery.create(selector, readOptions);
+            return queryExecutor.execute(query).stream();
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 }

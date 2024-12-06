@@ -20,15 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class EventStore {
 
-    private final Vertx vertx;
-
     private final EventPersistence eventPersistence;
 
     private final Event<EventAppended> event;
 
     public Stream stream(Selector selector) {
         return new Stream(
-                vertx,
                 selector,
                 eventPersistence
         );
@@ -36,7 +33,6 @@ public class EventStore {
 
     public AppendableStream stream(ByLogSelector selector) {
         return new AppendableStream(
-                vertx,
                 selector,
                 eventPersistence,
                 event

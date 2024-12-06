@@ -9,6 +9,8 @@ import com.getlipa.eventstore.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.event.selector.ByLogSelector;
 import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import jakarta.inject.Inject;
@@ -35,22 +37,18 @@ public abstract class JtaEventPersistence<T> implements EventPersistence {
     @Inject
     TransactionManager transactionManager;
 
-    @Inject
-    Vertx vertx;
-
     @Override
-    public <P extends Message> Future<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) {
-        return vertx.executeBlocking(result -> {
-            try {
-                appendBlocking(selector, logIndex, event);
-            } catch (EventAppendException e) {
-                result.fail(e);
-                return;
-            }
-            read(event.getId())
-                    .onSuccess(persisted -> result.complete(Event.from(persisted).withPayload(event.getPayload())))
-                    .onFailure(result::fail);
-        });
+    public <P extends Message> Uni<AnyEvent> append(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) {
+        return Uni.createFrom().<Void>emitter(emitter -> {
+                    try {
+                        appendBlocking(selector, logIndex, event);
+                        emitter.complete(null);
+                    } catch (EventAppendException e) {
+                        emitter.fail(e);
+                    }
+                })
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .onItem().transformToUni(appended -> read(event.getId()));
     }
 
     <P extends Message> void appendBlocking(ByLogSelector selector, LogIndex logIndex, EphemeralEvent<P> event) throws EventAppendException {

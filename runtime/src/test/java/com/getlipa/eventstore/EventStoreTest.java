@@ -58,7 +58,8 @@ class EventStoreTest {
         persistence = spy(new InMemoryEventPersistence());
         //persistence = spy(postgresEventPersistence);
         observer = mock(jakarta.enterprise.event.Event.class);
-        eventStore = new EventStore(Vertx.vertx(), persistence, observer);
+        doReturn(Future.succeededFuture().toCompletionStage()).when(observer).fireAsync(any());
+        eventStore = new EventStore(persistence, observer);
         PayloadDeserializer.register(Example.Simple.getDescriptor(), Example.Simple.parser());
     }
 
