@@ -13,6 +13,7 @@ import com.getlipa.eventstore.persistence.exception.EventAppendException;
 import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.Future;
 
@@ -49,7 +50,7 @@ public class InMemoryEventPersistence implements EventPersistence {
     }
 
     @Override
-    public Uni<Iterator<AnyEvent>> read(Selector selector, ReadOptions readOptions) {
+    public Multi<AnyEvent> read(Selector selector, ReadOptions readOptions) {
         final var result = new LinkedList<AnyEvent>();
         final var queue = new LinkedList<>(events);
         queue.sort(Comparator.comparing(EventMetadata::getPosition, readOptions.direction().getPositionComparator()));
@@ -62,7 +63,7 @@ public class InMemoryEventPersistence implements EventPersistence {
             }
             result.add(event);
         }
-        return Uni.createFrom().item(result.iterator());
+        return Multi.createFrom().items(result.stream());
     }
 
     @Override

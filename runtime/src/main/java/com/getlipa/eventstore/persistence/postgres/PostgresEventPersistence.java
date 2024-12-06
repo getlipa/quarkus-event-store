@@ -11,6 +11,7 @@ import com.getlipa.eventstore.persistence.exception.InvalidIndexException;
 import com.getlipa.eventstore.persistence.postgres.query.QueryExecutor;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Future;
@@ -69,10 +70,10 @@ public class PostgresEventPersistence extends JtaEventPersistence<JpaEvent> {
     }
 
     @Override
-    public Uni<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions) {
-        return Uni.createFrom().item(() -> {
+    public Multi<AnyEvent> read(Selector selector, final ReadOptions readOptions) {
+        return Multi.createFrom().items(() -> {
             var query = EventQuery.create(selector, readOptions);
-            return queryExecutor.execute(query).iterator();
+            return queryExecutor.execute(query).stream();
         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 }

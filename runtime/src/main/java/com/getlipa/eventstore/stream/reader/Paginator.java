@@ -61,7 +61,7 @@ public class Paginator {
             return eventPersistence.read(selector, ReadOptions.from(readOptions)
                             .limit(Integer.min(readOptions.limit(), readOptions.pageSize()))
                             .build())
-                    .onItem().transform(iterator -> Page.first(readOptions, iterator));
+                    .collect().asList().onItem().transform(events -> Page.first(readOptions, events.iterator()));
         }
         if (currentPage.remainingTotalLimit <= 0) {
             return Uni.createFrom().item(Page.empty());
@@ -73,7 +73,7 @@ public class Paginator {
                                 .limit(Integer.min((int) currentPage.remainingTotalLimit, readOptions.pageSize()) + 1)
                                 .build()
                 )
-                .onItem().transform(currentPage::createNext);
+                .collect().asList().onItem().transform(events -> currentPage.createNext(events.iterator()));
     }
 
     @RequiredArgsConstructor

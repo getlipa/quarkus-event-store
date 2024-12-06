@@ -119,13 +119,14 @@ class EventPersistenceTest {
         append(Events.byLog("c", id(1)), event -> event.withCausationId(id(5)));
 
         final var stringBuilder = new StringBuilder();
-        persistence.read(selector, readOptions).await().indefinitely()
-                .forEachRemaining(event -> stringBuilder.append(String.format(
+        persistence.read(selector, readOptions)
+                .onItem().invoke(event -> stringBuilder.append(String.format(
                         "%s-%s-%s ",
                         event.getLogContext(),
                         event.getLogId().toUuid().toString().replaceAll("[0-](?=.)", ""),
                         event.getLogIndex()
-                )));
+                )))
+                .collect().last().await().indefinitely();
         Assertions.assertEquals(expected, stringBuilder.toString().trim());
     }
 

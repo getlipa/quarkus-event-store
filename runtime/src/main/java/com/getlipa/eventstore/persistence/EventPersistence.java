@@ -8,6 +8,7 @@ import com.getlipa.eventstore.event.selector.Selector;
 import com.getlipa.eventstore.event.logindex.LogIndex;
 import com.getlipa.eventstore.stream.reader.ReadOptions;
 import com.google.protobuf.Message;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.Future;
 
@@ -22,7 +23,7 @@ public interface EventPersistence {
             EphemeralEvent<T> event
     );
 
-    Uni<Iterator<AnyEvent>> read(Selector selector, final ReadOptions readOptions);
+    Multi<AnyEvent> read(Selector selector, final ReadOptions readOptions);
 
     Uni<AnyEvent> read(Id id);
 }
